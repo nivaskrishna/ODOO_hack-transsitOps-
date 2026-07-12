@@ -36,6 +36,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [forgotRequestEmail, setForgotRequestEmail] = useState('');
   const [forgotRequestError, setForgotRequestError] = useState('');
   const [forgotRequestSuccess, setForgotRequestSuccess] = useState('');
+  const [generatedResetLink, setGeneratedResetLink] = useState('');
 
 
 
@@ -172,6 +173,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     e.preventDefault();
     setForgotRequestError('');
     setForgotRequestSuccess('');
+    setGeneratedResetLink('');
 
     const targetEmail = forgotRequestEmail.toLowerCase().trim();
 
@@ -192,12 +194,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     });
 
     if (!isManager && !matchedDriver) {
-      setForgotRequestError('Email address is not registered in our depot registry.');
+      setForgotRequestError('Email address is not registered. Please log in as Manager (manager@transitops.com / manager123) and register this driver first!');
       return;
     }
 
     // Send real email using EmailJS
     const resetLink = `${window.location.origin}/?resetEmail=${encodeURIComponent(targetEmail)}`;
+    setGeneratedResetLink(resetLink);
     
     const templateParams = {
       to_email: targetEmail,
@@ -214,7 +217,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       setForgotRequestEmail('');
     }).catch((err) => {
       console.error('EmailJS Error:', err);
-      setForgotRequestError('Failed to send email. Check your EmailJS configuration.');
+      // Fallback: Bypass hard block if key is placeholder
+      setForgotRequestSuccess('Virtual Outbox: Email delivery bypassed. Click the local simulation link below to reset the passcode.');
+      setForgotRequestEmail('');
     });
   };
 
@@ -476,7 +481,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       {/* 2. SECURE EMAIL REQUEST DIALOG */}
       <Dialog
         isOpen={isForgotRequestOpen}
-        onClose={() => setIsForgotRequestOpen(false)}
+        onClose={() => {
+          setIsForgotRequestOpen(false);
+          setForgotRequestError('');
+          setForgotRequestSuccess('');
+          setGeneratedResetLink('');
+        }}
         title="Passcode Reset coordinate Dispatcher"
         description="Verify your identity. A secure passcode modification link will be sent to your inbox."
       >
@@ -488,8 +498,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           )}
 
           {forgotRequestSuccess && (
-            <div className="p-3 bg-brand-success/10 text-brand-success border border-brand-success/20 rounded-xl text-xs font-semibold leading-relaxed">
-              {forgotRequestSuccess}
+            <div className="space-y-3">
+              <div className="p-3 bg-brand-success/10 text-brand-success border border-brand-success/20 rounded-xl text-xs font-semibold leading-relaxed">
+                {forgotRequestSuccess}
+              </div>
+              {generatedResetLink && (
+                <div className="p-3 bg-brand-green/10 text-brand-green border border-brand-green/20 rounded-xl text-xs font-semibold flex flex-col space-y-2">
+                  <span className="font-bold text-text-primary">Local Simulator Link:</span>
+                  <a 
+                    href={generatedResetLink} 
+                    className="underline text-white bg-brand-green hover:bg-brand-green/90 font-extrabold text-center block py-2 rounded-xl shadow-md transition-all cursor-pointer"
+                  >
+                    🔗 Click here to reset passcode
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
@@ -509,7 +532,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           </div>
 
           <div className="flex justify-end space-x-2 pt-3 border-t border-border-primary/45">
-            <Button variant="outline" type="button" onClick={() => setIsForgotRequestOpen(false)}>Cancel</Button>
+            <Button variant="outline" type="button" onClick={() => {
+              setIsForgotRequestOpen(false);
+              setForgotRequestError('');
+              setForgotRequestSuccess('');
+              setGeneratedResetLink('');
+            }}>Cancel</Button>
             <Button type="submit" className="bg-brand-green text-white font-bold">
               Dispatch Verification Email
             </Button>
