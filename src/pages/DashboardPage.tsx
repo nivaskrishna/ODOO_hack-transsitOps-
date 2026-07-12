@@ -1,14 +1,10 @@
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { MiniTrend } from '../components/MiniTrend';
-import { 
-  mockVehicles, 
-  mockDrivers, 
-  mockTrips, 
-  mockExpenses,
-} from '../data/mockData';
-import type { Trip } from '../data/mockData';
+import type { Trip, Vehicle, Driver, ExpenseRecord } from '../data/mockData';
+import { Dialog } from '../components/Dialog';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, Legend
@@ -21,18 +17,70 @@ import {
 interface DashboardPageProps {
   onNavigate: (tab: string) => void;
   onSelectTrip: (trip: Trip) => void;
+  vehicles: Vehicle[];
+  drivers: Driver[];
+  trips: Trip[];
+  expenses: ExpenseRecord[];
+  onDispatchTrip: (tripData: {
+    vehicleId: string;
+    driverId: string;
+    startLocation: string;
+    endLocation: string;
+    routeName: string;
+    distance: number;
+  }) => void;
 }
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onSelectTrip }) => {
-  // Calculations
-  const totalVehicles = mockVehicles.length;
-  const activeVehicles = mockVehicles.filter(v => v.status === 'Active').length;
-  const utilizationRate = Math.round((activeVehicles / totalVehicles) * 100);
+export const DashboardPage: React.FC<DashboardPageProps> = ({ 
+  onNavigate, 
+  onSelectTrip,
+  vehicles,
+  drivers,
+  trips,
+  expenses,
+  onDispatchTrip
+}) => {
+  // Centralized calculations
+  const totalVehicles = vehicles.length;
+  const activeVehicles = vehicles.filter(v => v.status === 'Active').length;
+  const utilizationRate = totalVehicles > 0 ? Math.round((activeVehicles / totalVehicles) * 100) : 0;
   
-  const totalDrivers = mockDrivers.length;
-  const availableDrivers = mockDrivers.filter(d => d.availability === 'Available').length;
+  const totalDrivers = drivers.length;
+  const availableDrivers = drivers.filter(d => d.availability === 'Available').length;
   
-  const totalExpenses = mockExpenses.reduce((sum, item) => sum + item.amount, 0);
+  const totalExpenses = expenses.reduce((sum, item) => sum + item.amount, 0);
+
+  // Dispatch Dialog State
+  const [isDispatchOpen, setIsDispatchOpen] = useState(false);
+  const [dispatchData, setDispatchData] = useState({
+    vehicleId: '',
+    driverId: '',
+    startLocation: 'Seattle Depot A',
+    endLocation: 'Portland Hub B',
+    routeName: 'I-5 Southbound',
+    distance: 280
+  });
+
+  const availableVehicles = vehicles.filter(v => v.status === 'Active');
+  const availDrivers = drivers.filter(d => d.availability === 'Available');
+
+  // Auto-select first available items when modal opens
+  useEffect(() => {
+    if (isDispatchOpen) {
+      setDispatchData(prev => ({
+        ...prev,
+        vehicleId: availableVehicles[0]?.id || '',
+        driverId: availDrivers[0]?.id || ''
+      }));
+    }
+  }, [isDispatchOpen]);
+
+  const handleDispatchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dispatchData.vehicleId || !dispatchData.driverId) return;
+    onDispatchTrip(dispatchData);
+    setIsDispatchOpen(false);
+  };
   
   // High-fidelity chart datasets
   const activeWeeklyData = [
@@ -80,7 +128,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onSele
           </p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" size="sm" className="hidden sm:inline-flex" onClick={() => onNavigate('Trips')}>
+          <Button variant="outline" size="sm" className="hidden sm:inline-flex" onClick={() => setIsDispatchOpen(true)}>
             Dispatch Route
           </Button>
           <Button size="sm" className="bg-brand-green hover:bg-brand-green/90" onClick={() => onNavigate('Vehicles')}>
@@ -92,7 +140,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onSele
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1 */}
-        <Card variant="glass" hoverEffect>
+        <Card variant="glass" hoverEffect onClick={() => onNavigate('Vehicles')}>
           <CardContent className="p-0 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Fleet Utilization</p>
@@ -112,7 +160,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onSele
         </Card>
 
         {/* KPI 2 */}
-        <Card variant="glass" hoverEffect>
+        <Card variant="glass" hoverEffect onClick={() => onNavigate('Drivers')}>
           <CardContent className="p-0 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Drivers Active</p>
@@ -132,7 +180,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onSele
         </Card>
 
         {/* KPI 3 */}
-        <Card variant="glass" hoverEffect>
+        <Card variant="glass" hoverEffect onClick={() => onNavigate('Fuel & Expenses')}>
           <CardContent className="p-0 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Carbon Savings</p>
@@ -152,7 +200,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onSele
         </Card>
 
         {/* KPI 4 */}
-        <Card variant="glass" hoverEffect>
+        <Card variant="glass" hoverEffect onClick={() => onNavigate('Fuel & Expenses')}>
           <CardContent className="p-0 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Monthly Expenses</p>
@@ -324,7 +372,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onSele
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-primary/40">
-                  {mockTrips.slice(0, 3).map((trip) => (
+                  {trips.slice(0, 3).map((trip: Trip) => (
                     <tr key={trip.id} className="hover:bg-bg-secondary/10 transition-colors">
                       <td className="p-4 font-bold text-text-primary">{trip.id}</td>
                       <td className="p-4">
@@ -432,6 +480,109 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onSele
           </CardContent>
         </Card>
       </div>
+
+      {/* Dispatch Route Dialog */}
+      <Dialog
+        isOpen={isDispatchOpen}
+        onClose={() => setIsDispatchOpen(false)}
+        title="AI Optimized Dispatch Center"
+        description="Configure route telemetry and assign an available vehicle and driver."
+      >
+        <form onSubmit={handleDispatchSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Start Hub Location</label>
+              <input
+                type="text"
+                required
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={dispatchData.startLocation}
+                onChange={(e) => setDispatchData({ ...dispatchData, startLocation: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Destination Hub</label>
+              <input
+                type="text"
+                required
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={dispatchData.endLocation}
+                onChange={(e) => setDispatchData({ ...dispatchData, endLocation: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Route Name</label>
+              <input
+                type="text"
+                required
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={dispatchData.routeName}
+                onChange={(e) => setDispatchData({ ...dispatchData, routeName: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Distance (km)</label>
+              <input
+                type="number"
+                required
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={dispatchData.distance}
+                onChange={(e) => setDispatchData({ ...dispatchData, distance: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Available Vehicle *</label>
+              <select
+                required
+                className="rounded-xl border border-border-primary bg-bg-card text-sm text-text-primary px-3 py-2 cursor-pointer focus:outline-none focus:border-brand-green"
+                value={dispatchData.vehicleId}
+                onChange={(e) => setDispatchData({ ...dispatchData, vehicleId: e.target.value })}
+              >
+                {availableVehicles.length === 0 ? (
+                  <option value="">No Active Vehicles Available</option>
+                ) : (
+                  availableVehicles.map(v => (
+                    <option key={v.id} value={v.id}>{v.id} - {v.name} ({v.fuelType})</option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Available Driver *</label>
+              <select
+                required
+                className="rounded-xl border border-border-primary bg-bg-card text-sm text-text-primary px-3 py-2 cursor-pointer focus:outline-none focus:border-brand-green"
+                value={dispatchData.driverId}
+                onChange={(e) => setDispatchData({ ...dispatchData, driverId: e.target.value })}
+              >
+                {availDrivers.length === 0 ? (
+                  <option value="">No Available Drivers</option>
+                ) : (
+                  availDrivers.map(d => (
+                    <option key={d.id} value={d.id}>{d.name} (Safety: {d.safetyScore}%)</option>
+                  ))
+                )}
+              </select>
+            </div>
+          </div>
+
+          {availableVehicles.length === 0 || availDrivers.length === 0 ? (
+            <div className="p-3 bg-brand-danger/10 text-brand-danger rounded-xl text-xs font-semibold flex items-center space-x-2">
+              <ShieldCheck className="h-4 w-4" />
+              <span>All drivers or vehicles are currently dispatched. Free up resources first.</span>
+            </div>
+          ) : null}
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" type="button" onClick={() => setIsDispatchOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={availableVehicles.length === 0 || availDrivers.length === 0}>
+              Dispatch Route
+            </Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   );
 };

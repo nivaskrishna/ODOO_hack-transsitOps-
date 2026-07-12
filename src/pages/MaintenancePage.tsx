@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { mockMaintenance, mockVehicles } from '../data/mockData';
-import type { MaintenanceRecord } from '../data/mockData';
+import type { MaintenanceRecord, Vehicle } from '../data/mockData';
 import { Card, CardContent } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
@@ -10,8 +9,19 @@ import {
   MapPin, Plus, ClipboardList, Check 
 } from 'lucide-react';
 
-export const MaintenancePage: React.FC = () => {
-  const [records, setRecords] = useState<MaintenanceRecord[]>(mockMaintenance);
+interface MaintenancePageProps {
+  maintenance: MaintenanceRecord[];
+  setMaintenance: React.Dispatch<React.SetStateAction<MaintenanceRecord[]>>;
+  vehicles: Vehicle[];
+}
+
+export const MaintenancePage: React.FC<MaintenancePageProps> = ({
+  maintenance,
+  setMaintenance,
+  vehicles
+}) => {
+  const records = maintenance;
+  const setRecords = setMaintenance;
   const [filterStatus, setFilterStatus] = useState<string>('All');
   
   // Modal details
@@ -33,7 +43,7 @@ export const MaintenancePage: React.FC = () => {
   });
 
   const getVehicleName = (vehicleId: string) => {
-    const v = mockVehicles.find(item => item.id === vehicleId);
+    const v = vehicles.find(item => item.id === vehicleId);
     return v ? v.name : vehicleId;
   };
 
@@ -320,7 +330,7 @@ export const MaintenancePage: React.FC = () => {
                 value={newRecord.vehicleId}
                 onChange={(e) => setNewRecord({ ...newRecord, vehicleId: e.target.value })}
               >
-                {mockVehicles.map(v => (
+                {vehicles.map(v => (
                   <option key={v.id} value={v.id}>{v.id} - {v.name}</option>
                 ))}
               </select>

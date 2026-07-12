@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { mockTrips, mockVehicles, mockDrivers } from '../data/mockData';
-import type { Trip } from '../data/mockData';
+import type { Trip, Vehicle, Driver } from '../data/mockData';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { 
@@ -8,12 +7,20 @@ import {
 } from 'lucide-react';
 
 interface TripsPageProps {
+  trips: Trip[];
   selectedTripId: string | null;
   onSelectTrip: (trip: Trip | null) => void;
+  vehicles: Vehicle[];
+  drivers: Driver[];
 }
 
-export const TripsPage: React.FC<TripsPageProps> = ({ selectedTripId, onSelectTrip }) => {
-  const [trips] = useState<Trip[]>(mockTrips);
+export const TripsPage: React.FC<TripsPageProps> = ({ 
+  trips,
+  selectedTripId, 
+  onSelectTrip,
+  vehicles,
+  drivers
+}) => {
   const [filterStatus, setFilterStatus] = useState<'All' | 'In Progress' | 'Completed' | 'Scheduled'>('All');
 
   // Currently viewed trip details (defaults to first or selected)
@@ -35,12 +42,12 @@ export const TripsPage: React.FC<TripsPageProps> = ({ selectedTripId, onSelectTr
   };
 
   const getVehicleName = (vehicleId: string) => {
-    const v = mockVehicles.find(item => item.id === vehicleId);
+    const v = vehicles.find(item => item.id === vehicleId);
     return v ? v.name : vehicleId;
   };
 
   const getDriverName = (driverId: string) => {
-    const d = mockDrivers.find(item => item.id === driverId);
+    const d = drivers.find(item => item.id === driverId);
     return d ? d.name : driverId;
   };
 

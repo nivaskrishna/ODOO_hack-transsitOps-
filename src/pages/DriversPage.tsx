@@ -1,31 +1,126 @@
 import { useState } from 'react';
-import { mockDrivers, mockTrips } from '../data/mockData';
-import type { Driver } from '../data/mockData';
+import type { Driver, Trip } from '../data/mockData';
 import { Card, CardContent, CardFooter } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Dialog } from '../components/Dialog';
 import { 
   Search, Filter, ShieldCheck, Mail, Phone, Calendar, 
-  TrendingUp 
+  TrendingUp, Plus
 } from 'lucide-react';
 
-export const DriversPage: React.FC = () => {
-  const [drivers] = useState<Driver[]>(mockDrivers);
+interface DriversPageProps {
+  drivers: Driver[];
+  onAddDriver: (driver: Driver) => void;
+  trips: Trip[];
+  onBlockDriver: (driverId: string, reason?: string) => void;
+  onUnblockDriver: (driverId: string) => void;
+  onDeleteDriver: (driverId: string) => void;
+  onRestoreDriver: (driverId: string) => void;
+}
+
+export const DriversPage: React.FC<DriversPageProps> = ({
+  drivers,
+  onAddDriver,
+  trips,
+  onBlockDriver,
+  onUnblockDriver,
+  onDeleteDriver,
+  onRestoreDriver
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [availabilityFilter, setAvailabilityFilter] = useState('All');
+
+  // Add Driver state
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [newDriver, setNewDriver] = useState<Partial<Driver>>({
+    id: '',
+    name: '',
+    avatar: '',
+    safetyScore: 95,
+    licenseStatus: 'Valid',
+    licenseExpiry: new Date(Date.now() + 365 * 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    contact: '',
+    availability: 'Available',
+    tripsCompleted: 0
+  });
+
+  const [createdCredentials, setCreatedCredentials] = useState<{ email: string; pass: string; name: string } | null>(null);
+
+  const handleAddSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDriver.id || !newDriver.name) return;
+
+    const initials = newDriver.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+    const tempPassword = 'pass_' + Math.floor(1000 + Math.random() * 9000);
+    const emailStr = newDriver.name.toLowerCase().replace(/\s+/g, '.') + '@transitops.com';
+
+    const driverToAdd: Driver = {
+      id: newDriver.id,
+      name: newDriver.name,
+      avatar: initials || 'DR',
+      safetyScore: newDriver.safetyScore || 90,
+      licenseStatus: newDriver.licenseStatus as Driver['licenseStatus'] || 'Valid',
+      licenseExpiry: newDriver.licenseExpiry || '',
+      contact: newDriver.contact || '',
+      availability: newDriver.availability as Driver['availability'] || 'Available',
+      tripsCompleted: 0,
+      password: tempPassword,
+      needsPasswordChange: true
+    };
+
+    onAddDriver(driverToAdd);
+    setIsAddOpen(false);
+    
+    setCreatedCredentials({
+      email: emailStr,
+      pass: tempPassword,
+      name: newDriver.name
+    });
+    
+    setNewDriver({
+      id: '',
+      name: '',
+      avatar: '',
+      safetyScore: 95,
+      licenseStatus: 'Valid',
+      licenseExpiry: new Date(Date.now() + 365 * 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      contact: '',
+      availability: 'Available',
+      tripsCompleted: 0
+    });
+  };
 
   // Dialog state
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [registryFilter, setRegistryFilter] = useState<'Active' | 'Blocked' | 'Deleted'>('Active');
 
   // Search & Filter
   const filteredDrivers = drivers.filter((d) => {
     const matchesSearch = d.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           d.id.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesAvailability = availabilityFilter === 'All' || d.availability === availabilityFilter;
-    return matchesSearch && matchesAvailability;
+    
+    if (registryFilter === 'Active') {
+      return matchesSearch && matchesAvailability && !d.isDeleted && !d.isBlocked;
+    }
+    if (registryFilter === 'Blocked') {
+      return matchesSearch && matchesAvailability && d.isBlocked && !d.isDeleted;
+    }
+    if (registryFilter === 'Deleted') {
+      return matchesSearch && !!d.isDeleted;
+    }
+    return false;
   });
+
+  const handleOpenBlockModal = (driverId: string) => {
+    const reason = prompt("Enter suspension/blocking reason details:", "Speeding alerts flagged by AI sensors");
+    if (reason !== null) {
+      onBlockDriver(driverId, reason);
+    }
+  };
 
   const getSafetyScoreColor = (score: number) => {
     if (score >= 95) return 'text-brand-success';
@@ -63,7 +158,7 @@ export const DriversPage: React.FC = () => {
 
   // Find driver's active or recent trip
   const getDriverActiveTrip = (driverId: string) => {
-    return mockTrips.find(t => t.driverId === driverId && t.status === 'In Progress');
+    return trips.find(t => t.driverId === driverId && t.status === 'In Progress');
   };
 
   return (
@@ -74,6 +169,44 @@ export const DriversPage: React.FC = () => {
           <h1 className="text-2xl md:text-3xl font-extrabold text-text-primary tracking-tight">Drivers Registry</h1>
           <p className="text-text-secondary text-sm">Review safety scores, licenses, availability status, and contact points.</p>
         </div>
+        <Button onClick={() => setIsAddOpen(true)} className="flex items-center space-x-1.5 self-start">
+          <Plus className="h-4 w-4" />
+          <span>Add Driver</span>
+        </Button>
+      </div>
+
+      {/* Registry Filters Tabs */}
+      <div className="flex space-x-2 border-b border-border-primary/40 pb-2">
+        <button
+          onClick={() => setRegistryFilter('Active')}
+          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+            registryFilter === 'Active'
+              ? 'bg-brand-green text-white shadow-sm'
+              : 'text-text-secondary bg-bg-secondary/20 hover:bg-bg-secondary/40 hover:text-text-primary'
+          }`}
+        >
+          👤 Active Registry
+        </button>
+        <button
+          onClick={() => setRegistryFilter('Blocked')}
+          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+            registryFilter === 'Blocked'
+              ? 'bg-brand-warning text-white shadow-sm'
+              : 'text-text-secondary bg-bg-secondary/20 hover:bg-bg-secondary/40 hover:text-text-primary'
+          }`}
+        >
+          🚫 Blocked Operators ({drivers.filter(d => d.isBlocked && !d.isDeleted).length})
+        </button>
+        <button
+          onClick={() => setRegistryFilter('Deleted')}
+          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+            registryFilter === 'Deleted'
+              ? 'bg-brand-danger text-white shadow-sm'
+              : 'text-text-secondary bg-bg-secondary/20 hover:bg-bg-secondary/40 hover:text-text-primary'
+          }`}
+        >
+          ♻️ Deleted Recovery Bin ({drivers.filter(d => d.isDeleted).length})
+        </button>
       </div>
 
       {/* Search and Filters */}
@@ -161,15 +294,76 @@ export const DriversPage: React.FC = () => {
                 </div>
               </CardContent>
 
-              <CardFooter className="p-0 pt-4 flex justify-between space-x-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1 text-xs" 
-                  onClick={() => handleOpenDetails(driver)}
-                >
-                  View Performance
-                </Button>
+              <CardFooter className="p-0 pt-4 flex flex-col space-y-2 border-t border-border-primary/40 mt-3">
+                {registryFilter === 'Active' && (
+                  <>
+                    <div className="flex justify-between items-center w-full text-[10px] text-text-secondary">
+                      <span>Email: <strong>{driver.name.toLowerCase().replace(/\s+/g, '.')}@transitops.com</strong></span>
+                      <span>Pass: <strong className="text-brand-green font-mono">{driver.password || 'driver123'}</strong></span>
+                    </div>
+                    <div className="flex space-x-2 w-full">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 text-xs" 
+                        onClick={() => handleOpenDetails(driver)}
+                      >
+                        View Details
+                      </Button>
+                      <button
+                        className="px-2.5 py-1 text-xs text-brand-warning bg-brand-warning/10 hover:bg-brand-warning/20 border border-brand-warning/20 rounded-xl transition-colors cursor-pointer"
+                        onClick={() => handleOpenBlockModal(driver.id)}
+                        title="Block Driver"
+                      >
+                        🚫
+                      </button>
+                      <button
+                        className="px-2.5 py-1 text-xs text-brand-danger bg-brand-danger/10 hover:bg-brand-danger/20 border border-brand-danger/20 rounded-xl transition-colors cursor-pointer"
+                        onClick={() => onDeleteDriver(driver.id)}
+                        title="Delete Driver"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {registryFilter === 'Blocked' && (
+                  <>
+                    <div className="w-full text-xs text-brand-warning font-semibold">
+                      Reason: {driver.blockedReason || 'Suspended'}
+                    </div>
+                    <div className="flex space-x-2 w-full mt-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 text-xs" 
+                        onClick={() => handleOpenDetails(driver)}
+                      >
+                        View Details
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="bg-brand-success hover:bg-brand-success/90 text-white font-bold flex-1"
+                        onClick={() => onUnblockDriver(driver.id)}
+                      >
+                        🟢 Unblock
+                      </Button>
+                    </div>
+                  </>
+                )}
+
+                {registryFilter === 'Deleted' && (
+                  <div className="flex w-full">
+                    <Button
+                      size="sm"
+                      className="bg-brand-green hover:bg-brand-green/90 text-white font-bold flex-1"
+                      onClick={() => onRestoreDriver(driver.id)}
+                    >
+                      ♻️ Restore Profile
+                    </Button>
+                  </div>
+                )}
               </CardFooter>
             </Card>
           );
@@ -244,6 +438,142 @@ export const DriversPage: React.FC = () => {
             {/* Actions */}
             <div className="flex justify-end pt-3 border-t border-border-primary/40">
               <Button onClick={() => setIsModalOpen(false)}>Close Registry</Button>
+            </div>
+          </div>
+        )}
+      </Dialog>
+      {/* Add Driver Dialog */}
+      <Dialog
+        isOpen={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        title="Register New Driver"
+        description="Add a new operator to the logistics platform registry."
+      >
+        <form onSubmit={handleAddSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Employee ID *</label>
+              <input
+                type="text"
+                placeholder="e.g. D-07"
+                required
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={newDriver.id}
+                onChange={(e) => setNewDriver({ ...newDriver, id: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Full Name *</label>
+              <input
+                type="text"
+                placeholder="e.g. John Doe"
+                required
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={newDriver.name}
+                onChange={(e) => setNewDriver({ ...newDriver, name: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Safety Score (0-100)</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                placeholder="95"
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={newDriver.safetyScore || ''}
+                onChange={(e) => setNewDriver({ ...newDriver, safetyScore: parseInt(e.target.value) || 90 })}
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Availability</label>
+              <select
+                className="rounded-xl border border-border-primary bg-bg-card text-sm text-text-primary px-3 py-2 cursor-pointer focus:outline-none focus:border-brand-green"
+                value={newDriver.availability}
+                onChange={(e) => setNewDriver({ ...newDriver, availability: e.target.value as any })}
+              >
+                <option value="Available">Available</option>
+                <option value="On Trip">On Trip</option>
+                <option value="Off Duty">Off Duty</option>
+              </select>
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">License Status</label>
+              <select
+                className="rounded-xl border border-border-primary bg-bg-card text-sm text-text-primary px-3 py-2 cursor-pointer focus:outline-none focus:border-brand-green"
+                value={newDriver.licenseStatus}
+                onChange={(e) => setNewDriver({ ...newDriver, licenseStatus: e.target.value as any })}
+              >
+                <option value="Valid">Valid</option>
+                <option value="Expiring Soon">Expiring Soon</option>
+                <option value="Expired">Expired</option>
+              </select>
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">License Expiry Date</label>
+              <input
+                type="date"
+                required
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={newDriver.licenseExpiry}
+                onChange={(e) => setNewDriver({ ...newDriver, licenseExpiry: e.target.value })}
+              />
+            </div>
+          </div>
+          
+          <div className="flex flex-col space-y-1">
+            <label className="text-xs text-text-secondary font-bold uppercase">Contact Phone / Email *</label>
+            <input
+              type="text"
+              placeholder="e.g. +1 (555) 019-1234"
+              required
+              className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+              value={newDriver.contact}
+              onChange={(e) => setNewDriver({ ...newDriver, contact: e.target.value })}
+            />
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+            <Button type="submit">Register Driver</Button>
+          </div>
+        </form>
+      </Dialog>
+
+      {/* Driver Credentials Dialog */}
+      <Dialog
+        isOpen={createdCredentials !== null}
+        onClose={() => setCreatedCredentials(null)}
+        title="Driver Credentials Generated"
+        description="Share these security details with the operator for their initial portal access."
+      >
+        {createdCredentials && (
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-brand-green/10 border border-brand-green/20 text-brand-green text-xs font-semibold">
+              🎉 Registration Complete! Driver profile has been integrated.
+            </div>
+
+            <div className="p-4 rounded-xl bg-bg-secondary/40 border border-border-primary space-y-3">
+              <div>
+                <span className="text-[10px] text-text-secondary uppercase font-bold block">Operator Name</span>
+                <span className="text-sm font-bold text-text-primary">{createdCredentials.name}</span>
+              </div>
+              <div className="border-t border-border-primary/40 pt-2">
+                <span className="text-[10px] text-text-secondary uppercase font-bold block">Portal Email / Username</span>
+                <span className="text-sm font-mono font-bold text-text-primary select-all">{createdCredentials.email}</span>
+              </div>
+              <div className="border-t border-border-primary/40 pt-2">
+                <span className="text-[10px] text-text-secondary uppercase font-bold block">Temporary Password</span>
+                <span className="text-sm font-mono font-bold text-brand-info select-all">{createdCredentials.pass}</span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-brand-info/10 text-brand-info rounded-xl text-[11px] leading-relaxed">
+              💡 <strong>Compliance Note:</strong> The driver will be forced to change this passcode to a private custom password on their initial login.
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => setCreatedCredentials(null)}>Acknowledge & Close</Button>
             </div>
           </div>
         )}

@@ -9,6 +9,7 @@ export interface Vehicle {
   fuelEfficiency: string; // e.g. "18 kWh/100km" or "8.5 L/100km"
   lastService: string;
   nextService: string;
+  isDeleted?: boolean;
 }
 
 export interface Driver {
@@ -21,6 +22,11 @@ export interface Driver {
   contact: string;
   availability: 'Available' | 'On Trip' | 'Off Duty';
   tripsCompleted: number;
+  password?: string;
+  needsPasswordChange?: boolean;
+  isDeleted?: boolean;
+  isBlocked?: boolean;
+  blockedReason?: string;
 }
 
 export interface Trip {
@@ -94,12 +100,12 @@ export const mockVehicles: Vehicle[] = [
 ];
 
 export const mockDrivers: Driver[] = [
-  { id: 'D-01', name: 'Alex Mercer', avatar: 'AM', safetyScore: 98, licenseStatus: 'Valid', licenseExpiry: '2029-04-12', contact: '+1 (555) 019-2834', availability: 'Available', tripsCompleted: 342 },
-  { id: 'D-02', name: 'Sarah Connor', avatar: 'SC', safetyScore: 94, licenseStatus: 'Valid', licenseExpiry: '2028-11-09', contact: '+1 (555) 014-9821', availability: 'On Trip', tripsCompleted: 512 },
-  { id: 'D-03', name: 'Marcus Aurelius', avatar: 'MA', safetyScore: 89, licenseStatus: 'Expiring Soon', licenseExpiry: '2026-07-28', contact: '+1 (555) 018-7253', availability: 'Available', tripsCompleted: 189 },
-  { id: 'D-04', name: 'Elena Rostova', avatar: 'ER', safetyScore: 96, licenseStatus: 'Valid', licenseExpiry: '2030-01-15', contact: '+1 (555) 012-3498', availability: 'On Trip', tripsCompleted: 275 },
-  { id: 'D-05', name: 'James Carter', avatar: 'JC', safetyScore: 78, licenseStatus: 'Valid', licenseExpiry: '2027-05-20', contact: '+1 (555) 017-4321', availability: 'Off Duty', tripsCompleted: 88 },
-  { id: 'D-06', name: 'Li Wei', avatar: 'LW', safetyScore: 91, licenseStatus: 'Expired', licenseExpiry: '2026-06-30', contact: '+1 (555) 015-8822', availability: 'Off Duty', tripsCompleted: 420 }
+  { id: 'D-01', name: 'Alex Mercer', avatar: 'AM', safetyScore: 98, licenseStatus: 'Valid', licenseExpiry: '2029-04-12', contact: '+1 (555) 019-2834', availability: 'Available', tripsCompleted: 342, password: 'driver123', needsPasswordChange: true },
+  { id: 'D-02', name: 'Sarah Connor', avatar: 'SC', safetyScore: 94, licenseStatus: 'Valid', licenseExpiry: '2028-11-09', contact: '+1 (555) 014-9821', availability: 'On Trip', tripsCompleted: 512, password: 'driver123', needsPasswordChange: true },
+  { id: 'D-03', name: 'Marcus Aurelius', avatar: 'MA', safetyScore: 89, licenseStatus: 'Expiring Soon', licenseExpiry: '2026-07-28', contact: '+1 (555) 018-7253', availability: 'Available', tripsCompleted: 189, password: 'driver123', needsPasswordChange: true },
+  { id: 'D-04', name: 'Elena Rostova', avatar: 'ER', safetyScore: 96, licenseStatus: 'Valid', licenseExpiry: '2030-01-15', contact: '+1 (555) 012-3498', availability: 'On Trip', tripsCompleted: 275, password: 'driver123', needsPasswordChange: true },
+  { id: 'D-05', name: 'James Carter', avatar: 'JC', safetyScore: 78, licenseStatus: 'Valid', licenseExpiry: '2027-05-20', contact: '+1 (555) 017-4321', availability: 'Off Duty', tripsCompleted: 88, password: 'driver123', needsPasswordChange: true },
+  { id: 'D-06', name: 'Li Wei', avatar: 'LW', safetyScore: 91, licenseStatus: 'Expired', licenseExpiry: '2026-06-30', contact: '+1 (555) 015-8822', availability: 'Off Duty', tripsCompleted: 420, password: 'driver123', needsPasswordChange: true }
 ];
 
 export const mockTrips: Trip[] = [

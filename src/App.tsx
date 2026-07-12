@@ -2,11 +2,20 @@ import { useState, useEffect } from 'react';
 import { 
   mockCopilotInsights, 
   mockNotifications, 
+  mockVehicles,
+  mockDrivers,
+  mockTrips,
+  mockMaintenance,
+  mockExpenses
 } from './data/mockData';
 import type {
   CopilotInsight,
   SystemNotification,
-  Trip
+  Trip,
+  Vehicle,
+  Driver,
+  MaintenanceRecord,
+  ExpenseRecord
 } from './data/mockData';
 import { DashboardPage } from './pages/DashboardPage';
 import { VehiclesPage } from './pages/VehiclesPage';
@@ -14,13 +23,15 @@ import { DriversPage } from './pages/DriversPage';
 import { TripsPage } from './pages/TripsPage';
 import { MaintenancePage } from './pages/MaintenancePage';
 import { FuelExpensesPage } from './pages/FuelExpensesPage';
+import { LoginPage } from './pages/LoginPage';
+import { DriverPortal } from './pages/DriverPortal';
 import { NotificationCenter } from './components/NotificationCenter';
 import { AICopilot } from './components/AICopilot';
 import { Button } from './components/Button';
 import { 
   Sparkles, LayoutDashboard, Truck, Users, Map, 
   Wrench, Wallet, Sun, Moon, Menu, CheckCircle2, 
-  Leaf, Info, X, ShieldAlert 
+  Leaf, Info, X, ShieldAlert, LogOut
 } from 'lucide-react';
 
 interface Toast {
@@ -29,17 +40,137 @@ interface Toast {
   type: 'success' | 'info' | 'warning';
 }
 
+interface UserSession {
+  email: string;
+  role: 'manager' | 'driver';
+  driverId?: string;
+  name: string;
+}
+
 export default function App() {
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
   const [activeTab, setActiveTab] = useState<string>('Dashboard');
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
 
-  // Live States
-  const [notifications, setNotifications] = useState<SystemNotification[]>(mockNotifications);
+  // centralized database states loaded from localStorage if present
+  const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
+    const saved = localStorage.getItem('transitops_vehicles');
+    return saved ? JSON.parse(saved) : mockVehicles;
+  });
+  const [drivers, setDrivers] = useState<Driver[]>(() => {
+    const saved = localStorage.getItem('transitops_drivers');
+    return saved ? JSON.parse(saved) : mockDrivers;
+  });
+  const [trips, setTrips] = useState<Trip[]>(() => {
+    const saved = localStorage.getItem('transitops_trips');
+    return saved ? JSON.parse(saved) : mockTrips;
+  });
+  const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>(() => {
+    const saved = localStorage.getItem('transitops_maintenance');
+    return saved ? JSON.parse(saved) : mockMaintenance;
+  });
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => {
+    const saved = localStorage.getItem('transitops_expenses');
+    return saved ? JSON.parse(saved) : mockExpenses;
+  });
+
+  const [notifications, setNotifications] = useState<SystemNotification[]>(() => {
+    const saved = localStorage.getItem('transitops_notifications');
+    return saved ? JSON.parse(saved) : mockNotifications;
+  });
   const [insights] = useState<CopilotInsight[]>(mockCopilotInsights);
   const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Password state & verification handlers
+  const [managerPassword, setManagerPassword] = useState<string>('manager123');
+
+  const handleChangePassword = (email: string, newPass: string): boolean => {
+    const emailLower = email.toLowerCase().trim();
+    if (emailLower === 'manager@transitops.com') {
+      setManagerPassword(newPass);
+      showToast('Manager password updated!', 'success');
+      return true;
+    }
+
+    let found = false;
+    setDrivers(prev => prev.map(d => {
+      const nameEmail = d.name.toLowerCase().replace(/\s+/g, '.');
+      const idMatch = emailLower.includes(d.id.toLowerCase());
+      const nameMatch = emailLower.includes(nameEmail);
+      if (idMatch || nameMatch) {
+        found = true;
+        return { ...d, password: newPass, needsPasswordChange: false };
+      }
+      return d;
+    }));
+
+    if (found) {
+      showToast('Driver password updated!', 'success');
+    }
+    return found;
+  };
+
+  // LocalStorage Sync Effects
+  useEffect(() => {
+    localStorage.setItem('transitops_vehicles', JSON.stringify(vehicles));
+  }, [vehicles]);
+  useEffect(() => {
+    localStorage.setItem('transitops_drivers', JSON.stringify(drivers));
+  }, [drivers]);
+  useEffect(() => {
+    localStorage.setItem('transitops_trips', JSON.stringify(trips));
+  }, [trips]);
+  useEffect(() => {
+    localStorage.setItem('transitops_maintenance', JSON.stringify(maintenance));
+  }, [maintenance]);
+  useEffect(() => {
+    localStorage.setItem('transitops_expenses', JSON.stringify(expenses));
+  }, [expenses]);
+  useEffect(() => {
+    localStorage.setItem('transitops_notifications', JSON.stringify(notifications));
+  }, [notifications]);
+  useEffect(() => {
+    localStorage.setItem('transitops_manager_password', JSON.stringify(managerPassword));
+  }, [managerPassword]);
+
+  // Driver and Vehicle Admin Mutations
+  const handleBlockDriver = (driverId: string, reason?: string) => {
+    setDrivers(prev => prev.map(d => d.id === driverId ? { ...d, isBlocked: true, blockedReason: reason || 'Suspended by admin' } : d));
+    showToast(`Driver profile ${driverId} suspended.`, 'warning');
+    handlePushNotification({
+      title: 'Driver Account Blocked',
+      message: `Driver profile ${driverId} was blocked. Reason: ${reason || 'Not specified'}`,
+      type: 'license'
+    });
+  };
+
+  const handleUnblockDriver = (driverId: string) => {
+    setDrivers(prev => prev.map(d => d.id === driverId ? { ...d, isBlocked: false, blockedReason: undefined } : d));
+    showToast(`Driver profile ${driverId} reactivated.`, 'success');
+  };
+
+  const handleDeleteDriver = (driverId: string) => {
+    setDrivers(prev => prev.map(d => d.id === driverId ? { ...d, isDeleted: true } : d));
+    showToast(`Driver profile ${driverId} moved to recovery bin.`, 'info');
+  };
+
+  const handleRestoreDriver = (driverId: string) => {
+    setDrivers(prev => prev.map(d => d.id === driverId ? { ...d, isDeleted: false } : d));
+    showToast(`Driver profile ${driverId} restored to active registry.`, 'success');
+  };
+
+  const handleDeleteVehicle = (vehicleId: string) => {
+    setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, isDeleted: true } : v));
+    showToast(`Vehicle ${vehicleId} moved to recovery bin.`, 'info');
+  };
+
+  const handleRestoreVehicle = (vehicleId: string) => {
+    setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, isDeleted: false } : v));
+    showToast(`Vehicle ${vehicleId} restored to active fleet.`, 'success');
+  };
 
   // Theme Sync
   useEffect(() => {
@@ -53,11 +184,11 @@ export default function App() {
 
   // Toast dispatch
   const showToast = (message: string, type: Toast['type'] = 'success') => {
-    const id = Math.random().toString(36).substr(2, 9);
+    const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    }, 3000);
   };
 
   // Notification Operations
@@ -71,6 +202,19 @@ export default function App() {
     showToast('All notifications marked as read', 'success');
   };
 
+  const handlePushNotification = (notif: { title: string; message: string; type: 'license' | 'maintenance' | 'trip' | 'vehicle' }) => {
+    const newNotif: SystemNotification = {
+      id: `N-driver-${Date.now()}`,
+      type: notif.type,
+      title: notif.title,
+      message: notif.message,
+      time: 'Just now',
+      unread: true
+    };
+    setNotifications(prev => [newNotif, ...prev]);
+    showToast(notif.title, 'info');
+  };
+
   // Dispatch details helper
   const handleSelectTrip = (trip: Trip | null) => {
     if (trip) {
@@ -80,6 +224,56 @@ export default function App() {
     } else {
       setSelectedTripId(null);
     }
+  };
+
+  // Centralized Database Mutations
+  const handleDispatchTrip = (tripData: {
+    vehicleId: string;
+    driverId: string;
+    startLocation: string;
+    endLocation: string;
+    routeName: string;
+    distance: number;
+  }) => {
+    const newTrip: Trip = {
+      id: `TR-${Math.floor(1005 + Math.random() * 1000)}`,
+      vehicleId: tripData.vehicleId,
+      driverId: tripData.driverId,
+      startLocation: tripData.startLocation,
+      endLocation: tripData.endLocation,
+      status: 'In Progress',
+      progress: 0,
+      distance: tripData.distance,
+      departureTime: new Date().toISOString(),
+      arrivalTime: '',
+      eta: 'Calculating...',
+      route: {
+        name: tripData.routeName,
+        coordinates: [
+          [47.6062, -122.3321],
+          [45.5152, -122.6784]
+        ]
+      },
+      timeline: [
+        {
+          time: 'Just now',
+          status: 'Dispatched',
+          location: tripData.startLocation,
+          description: 'Route configuration complete. Waiting for driver pickup.'
+        }
+      ]
+    };
+
+    setTrips(prev => [newTrip, ...prev]);
+    setVehicles(prev => prev.map(v => v.id === tripData.vehicleId ? { ...v, status: 'Active' } : v));
+    setDrivers(prev => prev.map(d => d.id === tripData.driverId ? { ...d, availability: 'On Trip' } : d));
+    
+    showToast(`Trip ${newTrip.id} dispatched successfully!`, 'success');
+  };
+
+  const handleAddDriver = (newDriver: Driver) => {
+    setDrivers(prev => [newDriver, ...prev]);
+    showToast(`Driver ${newDriver.name} added successfully!`, 'success');
   };
 
   // AI Copilot operations executor
@@ -116,6 +310,31 @@ export default function App() {
     { name: 'Maintenance', icon: <Wrench className="h-4.5 w-4.5" /> },
     { name: 'Fuel & Expenses', icon: <Wallet className="h-4.5 w-4.5" /> },
   ];
+
+  if (!currentUser) {
+    return (
+      <LoginPage 
+        onLogin={setCurrentUser} 
+        drivers={drivers} 
+        onChangePassword={handleChangePassword}
+        managerPasswordVal={managerPassword}
+      />
+    );
+  }
+
+  if (currentUser.role === 'driver') {
+    return (
+      <DriverPortal
+        currentUser={currentUser}
+        trips={trips}
+        setTrips={setTrips}
+        drivers={drivers}
+        setDrivers={setDrivers}
+        onLogout={() => setCurrentUser(null)}
+        onAddNotification={handlePushNotification}
+      />
+    );
+  }
 
   return (
     <div className="flex h-screen bg-bg-primary overflow-hidden">
@@ -232,11 +451,22 @@ export default function App() {
             <span className="h-6 w-px bg-border-primary" />
 
             {/* User Profile Avatar */}
-            <div className="flex items-center space-x-2">
-              <div className="h-8.5 w-8.5 rounded-full bg-brand-green text-white font-extrabold flex items-center justify-center text-xs">
-                OP
+            <div className="flex items-center space-x-2.5">
+              <div className="flex items-center space-x-2">
+                <div className="h-8.5 w-8.5 rounded-full bg-brand-green text-white font-extrabold flex items-center justify-center text-xs">
+                  OP
+                </div>
+                <span className="hidden md:inline text-xs font-bold text-text-primary">Ops Manager</span>
               </div>
-              <span className="hidden md:inline text-xs font-bold text-text-primary">Ops Manager</span>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setCurrentUser(null)}
+                className="p-2 border-border-primary text-text-secondary hover:text-brand-danger flex items-center justify-center"
+                title="Log Out"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </header>
@@ -245,15 +475,59 @@ export default function App() {
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'Dashboard' && (
-              <DashboardPage onNavigate={setActiveTab} onSelectTrip={handleSelectTrip} />
+              <DashboardPage 
+                onNavigate={setActiveTab} 
+                onSelectTrip={handleSelectTrip} 
+                vehicles={vehicles}
+                drivers={drivers}
+                trips={trips}
+                expenses={expenses}
+                onDispatchTrip={handleDispatchTrip}
+              />
             )}
-            {activeTab === 'Vehicles' && <VehiclesPage />}
-            {activeTab === 'Drivers' && <DriversPage />}
+            {activeTab === 'Vehicles' && (
+              <VehiclesPage 
+                vehicles={vehicles} 
+                setVehicles={setVehicles} 
+                maintenance={maintenance} 
+                onDeleteVehicle={handleDeleteVehicle}
+                onRestoreVehicle={handleRestoreVehicle}
+              />
+            )}
+            {activeTab === 'Drivers' && (
+              <DriversPage 
+                drivers={drivers} 
+                onAddDriver={handleAddDriver} 
+                trips={trips} 
+                onBlockDriver={handleBlockDriver}
+                onUnblockDriver={handleUnblockDriver}
+                onDeleteDriver={handleDeleteDriver}
+                onRestoreDriver={handleRestoreDriver}
+              />
+            )}
             {activeTab === 'Trips' && (
-              <TripsPage selectedTripId={selectedTripId} onSelectTrip={(t) => setSelectedTripId(t ? t.id : null)} />
+              <TripsPage 
+                trips={trips} 
+                selectedTripId={selectedTripId} 
+                onSelectTrip={(t) => setSelectedTripId(t ? t.id : null)} 
+                vehicles={vehicles}
+                drivers={drivers}
+              />
             )}
-            {activeTab === 'Maintenance' && <MaintenancePage />}
-            {activeTab === 'Fuel & Expenses' && <FuelExpensesPage />}
+            {activeTab === 'Maintenance' && (
+              <MaintenancePage 
+                maintenance={maintenance} 
+                setMaintenance={setMaintenance} 
+                vehicles={vehicles} 
+              />
+            )}
+            {activeTab === 'Fuel & Expenses' && (
+              <FuelExpensesPage 
+                expenses={expenses} 
+                setExpenses={setExpenses} 
+                vehicles={vehicles} 
+              />
+            )}
           </div>
         </main>
       </div>

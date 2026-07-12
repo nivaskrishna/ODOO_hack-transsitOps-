@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { mockExpenses, mockVehicles } from '../data/mockData';
-import type { ExpenseRecord } from '../data/mockData';
+import type { ExpenseRecord, Vehicle } from '../data/mockData';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '../components/Table';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -9,8 +8,17 @@ import { Dialog } from '../components/Dialog';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Search, Filter, DollarSign, Wallet, Leaf, Plus } from 'lucide-react';
 
-export const FuelExpensesPage: React.FC = () => {
-  const [expenses, setExpenses] = useState<ExpenseRecord[]>(mockExpenses);
+interface FuelExpensesPageProps {
+  expenses: ExpenseRecord[];
+  setExpenses: React.Dispatch<React.SetStateAction<ExpenseRecord[]>>;
+  vehicles: Vehicle[];
+}
+
+export const FuelExpensesPage: React.FC<FuelExpensesPageProps> = ({
+  expenses,
+  setExpenses,
+  vehicles
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   
@@ -44,8 +52,8 @@ export const FuelExpensesPage: React.FC = () => {
     color: COLORS[cat as keyof typeof COLORS] || '#00B67A'
   }));
 
-  // Fuel efficiency of active vehicles (derived from mockVehicles)
-  const fuelEfficiencyData = mockVehicles.map(v => {
+  // Fuel efficiency of active vehicles (derived from vehicles)
+  const fuelEfficiencyData = vehicles.map(v => {
     // Parse efficiency value
     const numericVal = parseFloat(v.fuelEfficiency);
     const unit = v.fuelEfficiency.includes('kWh') ? 'kWh/100km' : 'L/100km';
@@ -112,7 +120,7 @@ export const FuelExpensesPage: React.FC = () => {
     .filter(e => e.category === 'Fuel')
     .reduce((sum, item) => sum + item.amount, 0);
 
-  const totalSavingsCarbon = mockVehicles.filter(v => v.fuelType === 'Electric').length * 240; // mock saving ROI index
+  const totalSavingsCarbon = vehicles.filter(v => v.fuelType === 'Electric').length * 240; // mock saving ROI index
 
   return (
     <div className="space-y-6">
@@ -332,7 +340,7 @@ export const FuelExpensesPage: React.FC = () => {
                 value={newExpense.vehicleId}
                 onChange={(e) => setNewExpense({ ...newExpense, vehicleId: e.target.value })}
               >
-                {mockVehicles.map(v => (
+                {vehicles.map(v => (
                   <option key={v.id} value={v.id}>{v.id} - {v.name}</option>
                 ))}
               </select>

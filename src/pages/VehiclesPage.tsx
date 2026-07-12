@@ -1,8 +1,4 @@
 import { useState } from 'react';
-import { 
-  mockVehicles, 
-  mockMaintenance, 
-} from '../data/mockData';
 import type { 
   Vehicle, 
   MaintenanceRecord 
@@ -16,8 +12,21 @@ import {
   Search, Filter, Zap, Fuel, Plus, ChevronLeft, ChevronRight, Eye 
 } from 'lucide-react';
 
-export const VehiclesPage: React.FC = () => {
-  const [vehicles, setVehicles] = useState<Vehicle[]>(mockVehicles);
+interface VehiclesPageProps {
+  vehicles: Vehicle[];
+  setVehicles: React.Dispatch<React.SetStateAction<Vehicle[]>>;
+  maintenance: MaintenanceRecord[];
+  onDeleteVehicle: (vehicleId: string) => void;
+  onRestoreVehicle: (vehicleId: string) => void;
+}
+
+export const VehiclesPage: React.FC<VehiclesPageProps> = ({
+  vehicles,
+  setVehicles,
+  maintenance,
+  onDeleteVehicle,
+  onRestoreVehicle
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [energyFilter, setEnergyFilter] = useState('All');
@@ -25,6 +34,8 @@ export const VehiclesPage: React.FC = () => {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+
+  const [fleetFilter, setFleetFilter] = useState<'Active' | 'Deleted'>('Active');
 
   // Selected Vehicle Modal Detail
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -52,7 +63,12 @@ export const VehiclesPage: React.FC = () => {
                           v.category.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'All' || v.status === statusFilter;
     const matchesEnergy = energyFilter === 'All' || v.fuelType === energyFilter;
-    return matchesSearch && matchesStatus && matchesEnergy;
+    
+    if (fleetFilter === 'Active') {
+      return matchesSearch && matchesStatus && matchesEnergy && !v.isDeleted;
+    } else {
+      return matchesSearch && !!v.isDeleted;
+    }
   });
 
   const totalPages = Math.ceil(filteredVehicles.length / itemsPerPage);
@@ -98,12 +114,26 @@ export const VehiclesPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleAddVehicle = (e: React.FormEvent) => {
+  const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newVehicle.id || !newVehicle.name) return;
-    setVehicles([newVehicle as Vehicle, ...vehicles]);
+
+    const vehicleToAdd: Vehicle = {
+      id: newVehicle.id,
+      name: newVehicle.name,
+      category: newVehicle.category as Vehicle['category'],
+      capacity: newVehicle.capacity || 'N/A',
+      odometer: Number(newVehicle.odometer) || 0,
+      status: newVehicle.status as Vehicle['status'],
+      fuelType: newVehicle.fuelType as Vehicle['fuelType'],
+      fuelEfficiency: newVehicle.fuelEfficiency || 'N/A',
+      lastService: newVehicle.lastService || '',
+      nextService: newVehicle.nextService || ''
+    };
+
+    setVehicles(prev => [vehicleToAdd, ...prev]);
     setIsAddOpen(false);
-    // Reset Form
+    
     setNewVehicle({
       id: '',
       name: '',
@@ -119,7 +149,7 @@ export const VehiclesPage: React.FC = () => {
   };
 
   const selectedMaintenance: MaintenanceRecord[] = selectedVehicle 
-    ? mockMaintenance.filter(m => m.vehicleId === selectedVehicle.id) 
+    ? maintenance.filter(m => m.vehicleId === selectedVehicle.id) 
     : [];
 
   return (
@@ -134,6 +164,36 @@ export const VehiclesPage: React.FC = () => {
           <Plus className="h-4 w-4" />
           <span>Add Vehicle</span>
         </Button>
+      </div>
+
+      {/* Fleet Filters Tabs */}
+      <div className="flex space-x-2 border-b border-border-primary/40 pb-2">
+        <button
+          onClick={() => {
+            setFleetFilter('Active');
+            setCurrentPage(1);
+          }}
+          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+            fleetFilter === 'Active'
+              ? 'bg-brand-green text-white shadow-sm'
+              : 'text-text-secondary bg-bg-secondary/20 hover:bg-bg-secondary/40 hover:text-text-primary'
+          }`}
+        >
+          🚚 Active Fleet
+        </button>
+        <button
+          onClick={() => {
+            setFleetFilter('Deleted');
+            setCurrentPage(1);
+          }}
+          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+            fleetFilter === 'Deleted'
+              ? 'bg-brand-danger text-white shadow-sm'
+              : 'text-text-secondary bg-bg-secondary/20 hover:bg-bg-secondary/40 hover:text-text-primary'
+          }`}
+        >
+          ♻️ Deleted Vehicles Recovery ({vehicles.filter(v => v.isDeleted).length})
+        </button>
       </div>
 
       {/* Search and Filters */}
@@ -180,7 +240,7 @@ export const VehiclesPage: React.FC = () => {
                 setCurrentPage(1);
               }}
             >
-              <option value="All">All Fuels</option>
+              <option value="All">All Energies</option>
               <option value="Electric">Electric</option>
               <option value="Diesel">Diesel</option>
               <option value="Hybrid">Hybrid</option>
@@ -189,18 +249,18 @@ export const VehiclesPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Fleet Table */}
+      {/* Fleet table */}
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[10%]">Icon</TableHead>
-            <TableHead className="w-[15%]">Vehicle ID</TableHead>
-            <TableHead className="w-[20%]">Manufacturer/Model</TableHead>
-            <TableHead className="w-[15%]">Category</TableHead>
-            <TableHead className="w-[10%]">Status</TableHead>
-            <TableHead className="w-[12%]">Odometer</TableHead>
-            <TableHead className="w-[13%]">Efficiency</TableHead>
-            <TableHead className="w-[5%] text-right">Action</TableHead>
+            <TableHead className="w-12"></TableHead>
+            <TableHead>Asset ID</TableHead>
+            <TableHead>Vehicle Name</TableHead>
+            <TableHead>Classification</TableHead>
+            <TableHead>Telemetry Status</TableHead>
+            <TableHead>Odometer</TableHead>
+            <TableHead>Efficiency Index</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -222,16 +282,34 @@ export const VehiclesPage: React.FC = () => {
                 <TableCell className="font-mono text-xs text-brand-green font-bold">
                   {vehicle.fuelEfficiency}
                 </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() => handleOpenDetails(vehicle)}
-                    title="View details"
-                  >
-                    <Eye className="h-4 w-4 text-text-secondary hover:text-text-primary" />
-                  </Button>
+                <TableCell className="text-right flex items-center justify-end space-x-2">
+                  {fleetFilter === 'Active' ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 flex items-center justify-center"
+                        onClick={() => handleOpenDetails(vehicle)}
+                        title="View details"
+                      >
+                        <Eye className="h-4 w-4 text-text-secondary hover:text-text-primary" />
+                      </Button>
+                      <button
+                        className="h-8 px-2 py-1 text-xs text-brand-danger bg-brand-danger/10 hover:bg-brand-danger/20 border border-brand-danger/20 rounded-xl transition-colors cursor-pointer"
+                        onClick={() => onDeleteVehicle(vehicle.id)}
+                        title="Delete Vehicle"
+                      >
+                        🗑️
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className="h-8 px-3 py-1 text-xs text-brand-green bg-brand-green/10 hover:bg-brand-green/20 border border-brand-green/20 rounded-xl transition-colors cursor-pointer font-bold"
+                      onClick={() => onRestoreVehicle(vehicle.id)}
+                    >
+                      ♻️ Restore
+                    </button>
+                  )}
                 </TableCell>
               </TableRow>
             ))
@@ -356,7 +434,7 @@ export const VehiclesPage: React.FC = () => {
         title="Add New Fleet Vehicle"
         description="Register a new cargo vehicle in the operations registry."
       >
-        <form onSubmit={handleAddVehicle} className="space-y-4">
+        <form onSubmit={handleAddSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col space-y-1">
               <label className="text-xs text-text-secondary font-bold uppercase">Vehicle ID *</label>
