@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Button } from '../components/Button';
-import { Card, CardContent } from '../components/Card';
 import { Dialog } from '../components/Dialog';
 import { Truck, Lock, Mail, Sparkles, UserCheck, Inbox, ArrowRight } from 'lucide-react';
 import type { Driver } from '../data/mockData';
