@@ -225,66 +225,30 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-bg-primary p-4 transition-colors duration-300 relative">
-      
-      {/* 1. MASTER LOGIN VIEWPORT CONTAINER */}
-      <div className="w-full max-w-md lg:max-w-5xl bg-bg-card/70 backdrop-blur-md border border-border-primary/80 rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-0 relative">
+    <div 
+      className="min-h-screen w-full flex items-center justify-center p-4 md:p-8 transition-colors duration-300 relative bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: "url('/images/login_hero.png')" }}
+    >
+      {/* Background overlay to soften the image details and increase contrast */}
+      <div className="absolute inset-0 bg-slate-950/25 backdrop-blur-xs pointer-events-none" />
+
+      {/* 1. MASTER LOGIN VIEWPORT CONTAINER (Neat glass design overlay on top of background) */}
+      <div className="w-full max-w-md bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/50 dark:border-slate-800/50 rounded-3xl shadow-2xl overflow-hidden p-8 relative z-10">
+        <div className="absolute -top-16 -left-16 w-32 h-32 bg-brand-green/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-16 -right-16 w-32 h-32 bg-brand-info/10 rounded-full blur-2xl pointer-events-none" />
         
-        {/* Left Side: 3D Transport Hero Panel (Visible on lg+) */}
-        <div className="hidden lg:flex lg:col-span-7 bg-bg-secondary/40 border-r border-border-primary/50 flex-col justify-between p-10 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-brand-green/5 rounded-full blur-3xl pointer-events-none" />
-          
-          <div className="space-y-2 z-10">
-            <div className="flex items-center space-x-2">
-              <div className="h-9 w-9 rounded-xl bg-brand-green flex items-center justify-center text-white shadow-md shadow-brand-green/20">
-                <Truck className="h-5 w-5" />
-              </div>
-              <span className="text-lg font-black text-text-primary tracking-tight">TransitOps</span>
-            </div>
-            <h1 className="text-3xl font-black text-text-primary tracking-tight leading-tight pt-5">
-              Sustainable Dispatch & Cargo Telematics Platform
-            </h1>
-            <p className="text-text-secondary text-xs leading-relaxed max-w-md">
-              Unlock carbon-neutral dispatch parameters, real-time safety scores, and smart vehicle telemetry tracking for modern enterprise transport loops.
-            </p>
+        {/* Brand Header */}
+        <div className="flex flex-col items-center text-center space-y-3 mb-6">
+          <div className="h-12 w-12 rounded-2xl bg-brand-green flex items-center justify-center text-white shadow-xl shadow-brand-green/20">
+            <Truck className="h-6 w-6" />
           </div>
-          
-          {/* Main 3D Generated Image */}
-          <div className="my-6 flex justify-center items-center z-10">
-            <img 
-              src="/images/login_hero.png" 
-              alt="Futuristic Eco Logistics Hub 3D illustration"
-              className="max-h-[350px] w-auto object-contain rounded-2xl shadow-xl shadow-bg-primary/20 transform hover:scale-[1.02] transition-transform duration-500"
-            />
-          </div>
-          
-          {/* Footer Eco statistics */}
-          <div className="flex justify-between items-center text-xs text-text-secondary pt-4 border-t border-border-primary/30 z-10">
-            <div className="flex items-center space-x-1.5">
-              <span className="h-2 w-2 rounded-full bg-brand-green animate-pulse" />
-              <span className="font-bold text-brand-green">100% Zero Emission Logistics Hub</span>
-            </div>
-            <span>v1.2.0 • Premium SaaS</span>
+          <div>
+            <h2 className="text-2xl font-black text-text-primary tracking-tight">TransitOps</h2>
+            <p className="text-xs text-brand-green font-bold uppercase tracking-wider mt-1">Smart Fleet Portal</p>
           </div>
         </div>
 
-        {/* Right Side: Form Viewport */}
-        <div className="col-span-1 lg:col-span-5 p-8 flex flex-col justify-center relative bg-bg-card/40">
-          <div className="absolute -top-16 -left-16 w-32 h-32 bg-brand-green/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-16 -right-16 w-32 h-32 bg-brand-info/10 rounded-full blur-2xl pointer-events-none" />
-          
-          {/* Mini Brand Header (visible on mobile only) */}
-          <div className="flex lg:hidden flex-col items-center text-center space-y-3 mb-6">
-            <div className="h-11 w-11 rounded-2xl bg-brand-green flex items-center justify-center text-white shadow-xl shadow-brand-green/20">
-              <Truck className="h-5.5 w-5.5" />
-            </div>
-            <div>
-              <h2 className="text-xl font-black text-text-primary tracking-tight">TransitOps</h2>
-              <p className="text-[10px] text-brand-green font-bold uppercase tracking-wider mt-0.5">Smart Fleet Portal</p>
-            </div>
-          </div>
-
-          <div className="space-y-6">
+        <div className="space-y-6">
 
           {/* Conditional view: First-time change vs Verified change vs Standard login */}
           {isFirstTimeOpen ? (
@@ -486,7 +450,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           </div>
         </div>
       </div>
-    </div>
 
       {/* 2. SECURE EMAIL REQUEST DIALOG */}
       <Dialog
