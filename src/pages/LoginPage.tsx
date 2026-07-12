@@ -84,10 +84,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
       // Driver Auth
       const matchedDriver = drivers.find(d => {
+        // 1. Direct match on registered personal email
+        if (d.personalEmail && d.personalEmail.toLowerCase().trim() === emailLower) {
+          return true;
+        }
+        
+        // 2. Direct match on employee ID email
         const idMatch = emailLower.includes(d.id.toLowerCase());
+        
+        // 3. Match on dot-notation name (e.g. alex.mercer@transitops.com)
         const nameEmail = d.name.toLowerCase().replace(/\s+/g, '.');
         const nameMatch = emailLower.includes(nameEmail);
-        return idMatch || nameMatch;
+        
+        // 4. Match on space-removed name (e.g. alexmercer@transitops.com)
+        const nameNoSpaces = d.name.toLowerCase().replace(/\s+/g, '');
+        const nameNoSpacesMatch = emailLower.includes(nameNoSpaces);
+        
+        return idMatch || nameMatch || nameNoSpacesMatch;
       });
 
       if (matchedDriver) {
@@ -165,8 +178,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     // Validate email exists in system
     const isManager = targetEmail === 'manager@transitops.com';
     const matchedDriver = drivers.find(d => {
+      // 1. Check registered personal email
+      if (d.personalEmail && d.personalEmail.toLowerCase().trim() === targetEmail) {
+        return true;
+      }
+      
+      // 2. Fallbacks
       const nameEmail = d.name.toLowerCase().replace(/\s+/g, '.') + '@transitops.com';
-      return targetEmail === nameEmail || targetEmail === d.id.toLowerCase() + '@transitops.com';
+      const nameNoSpaces = d.name.toLowerCase().replace(/\s+/g, '') + '@transitops.com';
+      return targetEmail === nameEmail || 
+             targetEmail === nameNoSpaces ||
+             targetEmail === d.id.toLowerCase() + '@transitops.com';
     });
 
     if (!isManager && !matchedDriver) {

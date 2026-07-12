@@ -94,7 +94,7 @@ export const DriversPage: React.FC<DriversPageProps> = ({
     }
     
     setCreatedCredentials({
-      email: emailStr,
+      email: newDriver.personalEmail || emailStr,
       pass: tempPassword,
       name: newDriver.name
     });

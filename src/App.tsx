@@ -95,22 +95,29 @@ export default function App() {
       return true;
     }
 
-    let found = false;
-    setDrivers(prev => prev.map(d => {
-      const nameEmail = d.name.toLowerCase().replace(/\s+/g, '.');
+    const driverIndex = drivers.findIndex(d => {
+      const isPersonalMatch = d.personalEmail && d.personalEmail.toLowerCase().trim() === emailLower;
       const idMatch = emailLower.includes(d.id.toLowerCase());
+      const nameEmail = d.name.toLowerCase().replace(/\s+/g, '.');
       const nameMatch = emailLower.includes(nameEmail);
-      if (idMatch || nameMatch) {
-        found = true;
+      const nameNoSpaces = d.name.toLowerCase().replace(/\s+/g, '');
+      const nameNoSpacesMatch = emailLower.includes(nameNoSpaces);
+      return isPersonalMatch || idMatch || nameMatch || nameNoSpacesMatch;
+    });
+
+    if (driverIndex === -1) {
+      return false;
+    }
+
+    setDrivers(prev => prev.map((d, idx) => {
+      if (idx === driverIndex) {
         return { ...d, password: newPass, needsPasswordChange: false };
       }
       return d;
     }));
 
-    if (found) {
-      showToast('Driver password updated!', 'success');
-    }
-    return found;
+    showToast('Driver password updated!', 'success');
+    return true;
   };
 
   // LocalStorage Sync Effects
