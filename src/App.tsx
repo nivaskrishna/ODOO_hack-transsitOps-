@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { 
-  mockCopilotInsights, 
-  mockNotifications, 
+import {
+  mockCopilotInsights,
+  mockNotifications,
   mockVehicles,
   mockDrivers,
   mockTrips,
@@ -28,9 +28,9 @@ import { DriverPortal } from './pages/DriverPortal';
 import { NotificationCenter } from './components/NotificationCenter';
 import { AICopilot } from './components/AICopilot';
 import { Button } from './components/Button';
-import { 
-  Sparkles, LayoutDashboard, Truck, Users, Map, 
-  Wrench, Wallet, Sun, Moon, Menu, CheckCircle2, 
+import {
+  Sparkles, LayoutDashboard, Truck, Users, Map,
+  Wrench, Wallet, Sun, Moon, Menu, CheckCircle2,
   Leaf, Info, X, ShieldAlert, LogOut
 } from 'lucide-react';
 
@@ -48,7 +48,10 @@ interface UserSession {
 }
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
+    const saved = localStorage.getItem('transitops_current_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [activeTab, setActiveTab] = useState<string>('Dashboard');
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
@@ -142,6 +145,13 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('transitops_manager_password', JSON.stringify(managerPassword));
   }, [managerPassword]);
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('transitops_current_user', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('transitops_current_user');
+    }
+  }, [currentUser]);
 
   // Driver and Vehicle Admin Mutations
   const handleBlockDriver = (driverId: string, reason?: string) => {
@@ -248,7 +258,7 @@ export default function App() {
       driverId: tripData.driverId,
       startLocation: tripData.startLocation,
       endLocation: tripData.endLocation,
-      status: 'In Progress',
+      status: 'Scheduled',
       progress: 0,
       distance: tripData.distance,
       departureTime: new Date().toISOString(),
@@ -273,9 +283,75 @@ export default function App() {
 
     setTrips(prev => [newTrip, ...prev]);
     setVehicles(prev => prev.map(v => v.id === tripData.vehicleId ? { ...v, status: 'Active' } : v));
-    setDrivers(prev => prev.map(d => d.id === tripData.driverId ? { ...d, availability: 'On Trip' } : d));
-    
+    setDrivers(prev => prev.map(d => d.id === tripData.driverId ? { ...d, availability: 'Available' } : d));
+
     showToast(`Trip ${newTrip.id} dispatched successfully!`, 'success');
+  };
+
+  const handleDriverCompleteTrip = (tripId: string) => {
+    setTrips(prev => prev.map(t =>
+      t.id === tripId ? {
+        ...t,
+        status: 'Pending Completion',
+        progress: 100,
+        timeline: [
+          ...t.timeline,
+          {
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: 'Delivered',
+            location: t.endLocation,
+            description: 'Driver marked shipment as completed. Pending manager approval.'
+          }
+        ]
+      } : t
+    ));
+
+    const targetTrip = trips.find(t => t.id === tripId);
+    const driverName = targetTrip ? (drivers.find(d => d.id === targetTrip.driverId)?.name || 'Driver') : 'Driver';
+
+    handlePushNotification({
+      title: 'Sign-off Required',
+      message: `${driverName} marked Trip ${tripId} as completed. Pending verification.`,
+      type: 'trip'
+    });
+    showToast(`Trip ${tripId} submitted for manager verification.`, 'info');
+  };
+
+  const handleManagerCompleteTrip = (tripId: string) => {
+    let targetTrip: Trip | undefined;
+
+    setTrips(prev => prev.map(t => {
+      if (t.id === tripId) {
+        targetTrip = {
+          ...t,
+          status: 'Completed',
+          arrivalTime: new Date().toISOString(),
+          timeline: [
+            ...t.timeline,
+            {
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              status: 'Completed',
+              location: t.endLocation,
+              description: 'Manager signed off. Trip closed and resources released.'
+            }
+          ]
+        };
+        return targetTrip;
+      }
+      return t;
+    }));
+
+    const trip = targetTrip || trips.find(t => t.id === tripId);
+    if (trip) {
+      setVehicles(prev => prev.map(v => v.id === trip.vehicleId ? { ...v, status: 'Active' } : v));
+      setDrivers(prev => prev.map(d => d.id === trip.driverId ? { ...d, availability: 'Available' } : d));
+      showToast(`Trip ${tripId} confirmed! Driver and vehicle are now available.`, 'success');
+      handlePushNotification({
+        title: 'Trip Completed',
+        message: `Trip ${tripId} is fully closed. Vehicle and Driver released.`,
+        type: 'trip'
+      });
+    }
   };
 
   const handleAddDriver = (newDriver: Driver) => {
@@ -286,8 +362,8 @@ export default function App() {
   // AI Copilot operations executor
   const handleExecuteInsightAction = (insight: CopilotInsight) => {
     setIsCopilotOpen(false);
-    
-    switch(insight.category) {
+
+    switch (insight.category) {
       case 'Optimization':
         showToast('AI dispatch suggestion executed: Van-05 assigned to Richmond Courier run.', 'success');
         break;
@@ -320,9 +396,9 @@ export default function App() {
 
   if (!currentUser) {
     return (
-      <LoginPage 
-        onLogin={setCurrentUser} 
-        drivers={drivers} 
+      <LoginPage
+        onLogin={setCurrentUser}
+        drivers={drivers}
         onChangePassword={handleChangePassword}
         managerPasswordVal={managerPassword}
       />
@@ -339,17 +415,17 @@ export default function App() {
         setDrivers={setDrivers}
         onLogout={() => setCurrentUser(null)}
         onAddNotification={handlePushNotification}
+        onDriverCompleteTrip={handleDriverCompleteTrip}
       />
     );
   }
 
   return (
     <div className="flex h-screen bg-bg-primary overflow-hidden">
-      
+
       {/* 1. LEFT SIDEBAR */}
-      <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-bg-card border-r border-border-primary flex flex-col justify-between transition-transform duration-300 lg:translate-x-0 lg:static lg:inset-auto ${
-        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
+      <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-bg-card border-r border-border-primary flex flex-col justify-between transition-transform duration-300 lg:translate-x-0 lg:static lg:inset-auto ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}>
         <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
           {/* Brand header */}
           <div className="flex items-center justify-between px-6 pb-6 border-b border-border-primary/50">
@@ -363,7 +439,7 @@ export default function App() {
               </div>
             </div>
             {/* Mobile close button */}
-            <button 
+            <button
               className="lg:hidden p-1 rounded-lg hover:bg-bg-secondary text-text-secondary cursor-pointer"
               onClick={() => setIsSidebarOpen(false)}
             >
@@ -382,11 +458,10 @@ export default function App() {
                     setActiveTab(item.name);
                     setIsSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 cursor-pointer ${
-                    isActive 
-                      ? 'bg-brand-green text-white shadow-md shadow-brand-green/10' 
-                      : 'text-text-secondary hover:bg-bg-secondary hover:text-text-primary'
-                  }`}
+                  className={`w-full flex items-center px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 cursor-pointer ${isActive
+                    ? 'bg-brand-green text-white shadow-md shadow-brand-green/10'
+                    : 'text-text-secondary hover:bg-bg-secondary hover:text-text-primary'
+                    }`}
                 >
                   <span className="mr-3">{item.icon}</span>
                   {item.name}
@@ -408,12 +483,12 @@ export default function App() {
 
       {/* Main viewport area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        
+
         {/* 2. TOP NAVBAR */}
         <header className="h-16 border-b border-border-primary bg-bg-card flex items-center justify-between px-6 z-10">
           <div className="flex items-center space-x-4">
             {/* Mobile Sidebar Hamburger toggler */}
-            <button 
+            <button
               className="lg:hidden p-1.5 rounded-xl hover:bg-bg-secondary text-text-secondary cursor-pointer"
               onClick={() => setIsSidebarOpen(true)}
             >
@@ -428,8 +503,8 @@ export default function App() {
 
           <div className="flex items-center space-x-3.5">
             {/* AI Assistant Button */}
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => setIsCopilotOpen(true)}
               className="bg-brand-green/10 text-brand-green hover:bg-brand-green/20 border-brand-green/20 flex items-center space-x-1.5"
@@ -439,14 +514,14 @@ export default function App() {
             </Button>
 
             {/* Notification popover */}
-            <NotificationCenter 
-              notifications={notifications} 
+            <NotificationCenter
+              notifications={notifications}
               onMarkRead={handleMarkRead}
               onMarkAllRead={handleMarkAllRead}
             />
 
             {/* Dark mode toggler */}
-            <button 
+            <button
               onClick={() => setDarkMode(!darkMode)}
               className="p-2 rounded-full hover:bg-bg-secondary text-text-secondary hover:text-text-primary transition-all duration-200 cursor-pointer"
               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
@@ -465,8 +540,8 @@ export default function App() {
                 </div>
                 <span className="hidden md:inline text-xs font-bold text-text-primary">Ops Manager</span>
               </div>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => setCurrentUser(null)}
                 className="p-2 border-border-primary text-text-secondary hover:text-brand-danger flex items-center justify-center"
@@ -482,9 +557,9 @@ export default function App() {
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'Dashboard' && (
-              <DashboardPage 
-                onNavigate={setActiveTab} 
-                onSelectTrip={handleSelectTrip} 
+              <DashboardPage
+                onNavigate={setActiveTab}
+                onSelectTrip={handleSelectTrip}
                 vehicles={vehicles}
                 drivers={drivers}
                 trips={trips}
@@ -493,19 +568,19 @@ export default function App() {
               />
             )}
             {activeTab === 'Vehicles' && (
-              <VehiclesPage 
-                vehicles={vehicles} 
-                setVehicles={setVehicles} 
-                maintenance={maintenance} 
+              <VehiclesPage
+                vehicles={vehicles}
+                setVehicles={setVehicles}
+                maintenance={maintenance}
                 onDeleteVehicle={handleDeleteVehicle}
                 onRestoreVehicle={handleRestoreVehicle}
               />
             )}
             {activeTab === 'Drivers' && (
-              <DriversPage 
-                drivers={drivers} 
-                onAddDriver={handleAddDriver} 
-                trips={trips} 
+              <DriversPage
+                drivers={drivers}
+                onAddDriver={handleAddDriver}
+                trips={trips}
                 onBlockDriver={handleBlockDriver}
                 onUnblockDriver={handleUnblockDriver}
                 onDeleteDriver={handleDeleteDriver}
@@ -513,26 +588,27 @@ export default function App() {
               />
             )}
             {activeTab === 'Trips' && (
-              <TripsPage 
-                trips={trips} 
-                selectedTripId={selectedTripId} 
-                onSelectTrip={(t) => setSelectedTripId(t ? t.id : null)} 
+              <TripsPage
+                trips={trips}
+                selectedTripId={selectedTripId}
+                onSelectTrip={(t) => setSelectedTripId(t ? t.id : null)}
                 vehicles={vehicles}
                 drivers={drivers}
+                onManagerCompleteTrip={handleManagerCompleteTrip}
               />
             )}
             {activeTab === 'Maintenance' && (
-              <MaintenancePage 
-                maintenance={maintenance} 
-                setMaintenance={setMaintenance} 
-                vehicles={vehicles} 
+              <MaintenancePage
+                maintenance={maintenance}
+                setMaintenance={setMaintenance}
+                vehicles={vehicles}
               />
             )}
             {activeTab === 'Fuel & Expenses' && (
-              <FuelExpensesPage 
-                expenses={expenses} 
-                setExpenses={setExpenses} 
-                vehicles={vehicles} 
+              <FuelExpensesPage
+                expenses={expenses}
+                setExpenses={setExpenses}
+                vehicles={vehicles}
               />
             )}
           </div>
@@ -540,7 +616,7 @@ export default function App() {
       </div>
 
       {/* 4. AI COPILOT DRAWER */}
-      <AICopilot 
+      <AICopilot
         isOpen={isCopilotOpen}
         onClose={() => setIsCopilotOpen(false)}
         insights={insights}

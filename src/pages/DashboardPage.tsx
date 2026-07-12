@@ -13,7 +13,31 @@ import {
   TrendingUp, Users, Truck, DollarSign, Leaf,
   ArrowRight, ShieldCheck, MapPin, Navigation, Clock 
 } from 'lucide-react';
+const CITY_COORDINATES: Record<string, { lat: number; lon: number }> = {
+  'Seattle Depot A': { lat: 47.6062, lon: -122.3321 },
+  'Portland Distribution': { lat: 45.5152, lon: -122.6784 },
+  'San Francisco Depot': { lat: 37.7749, lon: -122.4194 },
+  'Los Angeles Logistics': { lat: 34.0522, lon: -118.2437 },
+  'Las Vegas Terminal': { lat: 36.1716, lon: -115.1398 },
+  'Phoenix Cargo Center': { lat: 33.4484, lon: -112.0740 },
+  'Salt Lake City Hub': { lat: 40.7608, lon: -111.8910 },
+  'Vancouver Port Depot': { lat: 49.2827, lon: -123.1207 }
+};
 
+const calculateHaversineDistance = (city1: string, city2: string): number => {
+  const coord1 = CITY_COORDINATES[city1];
+  const coord2 = CITY_COORDINATES[city2];
+  if (!coord1 || !coord2) return 150;
+  const R = 6371; // km
+  const dLat = (coord2.lat - coord1.lat) * Math.PI / 180;
+  const dLon = (coord2.lon - coord1.lon) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(coord1.lat * Math.PI / 180) * Math.cos(coord2.lat * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return Math.round(R * c);
+};
 interface DashboardPageProps {
   onNavigate: (tab: string) => void;
   onSelectTrip: (trip: Trip) => void;
@@ -56,10 +80,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     vehicleId: '',
     driverId: '',
     startLocation: 'Seattle Depot A',
-    endLocation: 'Portland Hub B',
-    routeName: 'I-5 Southbound',
+    endLocation: 'Portland Distribution',
+    routeName: 'Seattle to Portland Direct Route',
     distance: 280
   });
+
+  // Calculate Geolocation distance reactively
+  useEffect(() => {
+    if (dispatchData.startLocation && dispatchData.endLocation) {
+      const dist = calculateHaversineDistance(dispatchData.startLocation, dispatchData.endLocation);
+      const cleanStart = dispatchData.startLocation.split(' ')[0];
+      const cleanEnd = dispatchData.endLocation.split(' ')[0];
+      setDispatchData(prev => ({
+        ...prev,
+        distance: dist,
+        routeName: `${cleanStart} to ${cleanEnd} Direct Route`
+      }));
+    }
+  }, [dispatchData.startLocation, dispatchData.endLocation]);
 
   const availableVehicles = vehicles.filter(v => v.status === 'Active');
   const availDrivers = drivers.filter(d => d.availability === 'Available');
@@ -492,23 +530,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col space-y-1">
               <label className="text-xs text-text-secondary font-bold uppercase">Start Hub Location</label>
-              <input
-                type="text"
+              <select
                 required
-                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                className="rounded-xl border border-border-primary bg-bg-card text-sm text-text-primary px-3 py-2 cursor-pointer focus:outline-none focus:border-brand-green"
                 value={dispatchData.startLocation}
                 onChange={(e) => setDispatchData({ ...dispatchData, startLocation: e.target.value })}
-              />
+              >
+                {Object.keys(CITY_COORDINATES).map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
             </div>
             <div className="flex flex-col space-y-1">
               <label className="text-xs text-text-secondary font-bold uppercase">Destination Hub</label>
-              <input
-                type="text"
+              <select
                 required
-                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                className="rounded-xl border border-border-primary bg-bg-card text-sm text-text-primary px-3 py-2 cursor-pointer focus:outline-none focus:border-brand-green"
                 value={dispatchData.endLocation}
                 onChange={(e) => setDispatchData({ ...dispatchData, endLocation: e.target.value })}
-              />
+              >
+                {Object.keys(CITY_COORDINATES).map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
             </div>
             <div className="flex flex-col space-y-1">
               <label className="text-xs text-text-secondary font-bold uppercase">Route Name</label>
@@ -521,13 +565,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               />
             </div>
             <div className="flex flex-col space-y-1">
-              <label className="text-xs text-text-secondary font-bold uppercase">Distance (km)</label>
+              <label className="text-xs text-text-secondary font-bold uppercase">Calculated Distance (km)</label>
               <input
                 type="number"
                 required
-                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                readOnly
+                className="rounded-xl border border-border-primary bg-bg-secondary text-sm text-text-secondary px-3 py-2 focus:outline-none cursor-not-allowed font-mono font-bold"
                 value={dispatchData.distance}
-                onChange={(e) => setDispatchData({ ...dispatchData, distance: parseInt(e.target.value) || 0 })}
               />
             </div>
 

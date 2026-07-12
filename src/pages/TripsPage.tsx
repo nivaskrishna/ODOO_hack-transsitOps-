@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Trip, Vehicle, Driver } from '../data/mockData';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/Card';
 import { Badge } from '../components/Badge';
+import { Button } from '../components/Button';
 import { 
   Navigation, Clock, Map 
 } from 'lucide-react';
@@ -12,6 +13,7 @@ interface TripsPageProps {
   onSelectTrip: (trip: Trip | null) => void;
   vehicles: Vehicle[];
   drivers: Driver[];
+  onManagerCompleteTrip: (tripId: string) => void;
 }
 
 export const TripsPage: React.FC<TripsPageProps> = ({ 
@@ -19,9 +21,10 @@ export const TripsPage: React.FC<TripsPageProps> = ({
   selectedTripId, 
   onSelectTrip,
   vehicles,
-  drivers
+  drivers,
+  onManagerCompleteTrip
 }) => {
-  const [filterStatus, setFilterStatus] = useState<'All' | 'In Progress' | 'Completed' | 'Scheduled'>('All');
+  const [filterStatus, setFilterStatus] = useState<'All' | 'In Progress' | 'Pending Completion' | 'Completed' | 'Scheduled'>('All');
 
   // Currently viewed trip details (defaults to first or selected)
   const currentTrip = trips.find(t => t.id === selectedTripId) || trips[0];
@@ -38,6 +41,8 @@ export const TripsPage: React.FC<TripsPageProps> = ({
         return <Badge variant="danger">Delayed</Badge>;
       case 'Scheduled':
         return <Badge variant="neutral">Scheduled</Badge>;
+      case 'Pending Completion':
+        return <Badge variant="warning">Awaiting Approval</Badge>;
     }
   };
 
@@ -64,8 +69,8 @@ export const TripsPage: React.FC<TripsPageProps> = ({
         {/* Left Column: Trips List */}
         <div className="lg:col-span-1 space-y-4">
           {/* Status Tabs */}
-          <div className="flex space-x-1 p-1 bg-bg-secondary rounded-xl">
-            {(['All', 'In Progress', 'Completed', 'Scheduled'] as const).map((tab) => (
+          <div className="flex space-x-2 pb-2">
+            {(['All', 'In Progress', 'Pending Completion', 'Completed', 'Scheduled'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setFilterStatus(tab)}
@@ -224,6 +229,27 @@ export const TripsPage: React.FC<TripsPageProps> = ({
                   </div>
                 </CardContent>
               </Card>
+
+              {currentTrip.status === 'Pending Completion' && (
+                <Card className="border-brand-warning bg-brand-warning/10 dark:bg-brand-warning/5">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-bold text-brand-warning">
+                      ⚠️ Delivery Review Pending Sign-Off
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      The driver has completed this shipment and requested route closure. Please verify and confirm to release the driver and vehicle assets.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-2">
+                    <Button 
+                      className="w-full bg-brand-success hover:bg-brand-success/90 text-white font-bold text-xs py-2"
+                      onClick={() => onManagerCompleteTrip(currentTrip.id)}
+                    >
+                      ✅ Approve & Release Fleet Assets
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Shipping Progress Milestones Timeline */}
               <Card>

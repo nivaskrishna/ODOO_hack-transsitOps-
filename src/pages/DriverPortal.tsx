@@ -17,6 +17,7 @@ interface DriverPortalProps {
   setDrivers: React.Dispatch<React.SetStateAction<Driver[]>>;
   onLogout: () => void;
   onAddNotification: (notification: { title: string; message: string; type: 'license' | 'maintenance' | 'trip' | 'vehicle' }) => void;
+  onDriverCompleteTrip: (tripId: string) => void;
 }
 
 export const DriverPortal: React.FC<DriverPortalProps> = ({
@@ -26,7 +27,8 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
   drivers,
   setDrivers,
   onLogout,
-  onAddNotification
+  onAddNotification,
+  onDriverCompleteTrip
 }) => {
   const driverId = currentUser.driverId || '';
   const currentDriver = drivers.find(d => d.id === driverId);
@@ -103,6 +105,8 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
         return <Badge variant="danger">Rejected / Delayed</Badge>;
       case 'Scheduled':
         return <Badge variant="neutral">Pending Review</Badge>;
+      case 'Pending Completion':
+        return <Badge variant="warning">Awaiting Sign-off</Badge>;
     }
   };
 
@@ -237,7 +241,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
                     </div>
                   </CardContent>
 
-                  {/* Actions (Accept/Reject) */}
+                   {/* Actions (Accept/Reject) */}
                   {(trip.status === 'Scheduled' || trip.status === 'Delayed') && (
                     <CardFooter className="flex justify-end space-x-2 pt-4 border-t border-border-primary/40">
                       <Button 
@@ -254,6 +258,18 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
                       >
                         <CheckCircle className="h-4 w-4" />
                         <span>Accept & Load</span>
+                      </Button>
+                    </CardFooter>
+                  )}
+
+                  {trip.status === 'In Progress' && (
+                    <CardFooter className="flex justify-end pt-4 border-t border-border-primary/40">
+                      <Button 
+                        className="bg-brand-success hover:bg-brand-success/90 text-white font-bold flex items-center space-x-1.5 w-full justify-center"
+                        onClick={() => onDriverCompleteTrip(trip.id)}
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        <span>Mark Route as Completed (Submit to Manager)</span>
                       </Button>
                     </CardFooter>
                   )}

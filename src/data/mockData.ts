@@ -44,7 +44,7 @@ export interface Trip {
   driverId: string;
   startLocation: string;
   endLocation: string;
-  status: 'Scheduled' | 'In Progress' | 'Completed' | 'Delayed';
+  status: 'Scheduled' | 'In Progress' | 'Completed' | 'Delayed' | 'Pending Completion';
   progress: number; // 0 to 100
   distance: number; // km
   departureTime: string;
