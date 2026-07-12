@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../components/Button';
 import { Dialog } from '../components/Dialog';
-import { Truck, Lock, Mail, Sparkles, UserCheck, Inbox, ArrowRight } from 'lucide-react';
+import { Truck, Lock, Mail, Sparkles, UserCheck } from 'lucide-react';
+import emailjs from '@emailjs/browser';
 import type { Driver } from '../data/mockData';
 
 interface LoginPageProps {
@@ -9,15 +10,6 @@ interface LoginPageProps {
   drivers: Driver[];
   onChangePassword: (email: string, newPass: string) => boolean;
   managerPasswordVal: string;
-}
-
-interface SimulatedEmail {
-  id: string;
-  to: string;
-  subject: string;
-  body: string;
-  timestamp: string;
-  actionEmail: string;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ 
@@ -45,16 +37,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [forgotRequestError, setForgotRequestError] = useState('');
   const [forgotRequestSuccess, setForgotRequestSuccess] = useState('');
 
-  // SMTP sandbox state
-  const [emails, setEmails] = useState<SimulatedEmail[]>([]);
-  const [isMailboxOpen, setIsMailboxOpen] = useState(false);
-  const [selectedEmail, setSelectedEmail] = useState<SimulatedEmail | null>(null);
+
 
   // Passcode reset view (unlocked only via email verification link)
   const [resetTargetEmail, setResetTargetEmail] = useState<string | null>(null);
   const [resetPass, setResetPass] = useState('');
   const [resetConfirm, setResetConfirm] = useState('');
   const [resetError, setResetError] = useState('');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const resetEmailParam = params.get('resetEmail');
+    if (resetEmailParam) {
+      setResetTargetEmail(resetEmailParam);
+      // Clean up the URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,20 +174,26 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       return;
     }
 
-    // Send simulated email
-    const newMail: SimulatedEmail = {
-      id: `mail-${Date.now()}`,
-      to: targetEmail,
-      subject: '🔒 TransitOps Recovery - Secure Passcode Reset Link',
-      body: `Hello,\n\nA security request was initialized to reset the TransitOps password for this account. To change your passcode, please click the secure link below:`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      actionEmail: targetEmail
+    // Send real email using EmailJS
+    const resetLink = `${window.location.origin}/?resetEmail=${encodeURIComponent(targetEmail)}`;
+    
+    const templateParams = {
+      to_email: targetEmail,
+      reset_link: resetLink,
     };
 
-    setEmails(prev => [newMail, ...prev]);
-    setForgotRequestSuccess('Passcode recovery instructions have been successfully dispatched to your email address.');
-    setForgotRequestEmail('');
-    setIsMailboxOpen(true); // Open simulated sandbox automatically to show the email!
+    emailjs.send(
+      import.meta.env.VITE_EMAILJS_SERVICE_ID || 'default_service',
+      import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'default_template',
+      templateParams,
+      import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'default_key'
+    ).then(() => {
+      setForgotRequestSuccess('Passcode recovery instructions have been successfully dispatched to your email address.');
+      setForgotRequestEmail('');
+    }).catch((err) => {
+      console.error('EmailJS Error:', err);
+      setForgotRequestError('Failed to send email. Check your EmailJS configuration.');
+    });
   };
 
   const handleResetSubmit = (e: React.FormEvent) => {
@@ -218,13 +223,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     }
   };
 
-  const handleTriggerResetLink = (targetEmail: string) => {
-    // Lock the reset interface to the verified email
-    setResetTargetEmail(targetEmail);
-    setSelectedEmail(null);
-    setIsMailboxOpen(false);
-    setIsForgotRequestOpen(false);
-  };
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-bg-primary p-4 transition-colors duration-300 relative">
@@ -534,77 +532,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         </form>
       </Dialog>
 
-      {/* 3. FLOATING SMTP SIMULATOR PANEL */}
-      <div className="fixed bottom-4 right-4 z-50">
-        <button
-          onClick={() => setIsMailboxOpen(!isMailboxOpen)}
-          className="bg-brand-green hover:bg-brand-green/90 text-white font-bold p-3 rounded-full flex items-center space-x-2 shadow-xl shadow-brand-green/20 border border-brand-green/30 cursor-pointer"
-        >
-          <Inbox className="h-5 w-5" />
-          <span className="text-xs pr-1">DEPOT MAILBOX SIMULATOR ({emails.length})</span>
-        </button>
 
-        {isMailboxOpen && (
-          <div className="absolute bottom-14 right-0 w-80 max-h-96 bg-bg-card border border-border-primary rounded-2xl shadow-2xl flex flex-col overflow-hidden text-sm">
-            <div className="bg-brand-green text-white p-3.5 flex items-center justify-between font-bold">
-              <span>📧 SMTP Virtual Inbox Sandbox</span>
-              <button onClick={() => setIsMailboxOpen(false)} className="text-white/80 hover:text-white text-xs cursor-pointer">Close</button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto divide-y divide-border-primary/40 min-h-[250px] max-h-[300px]">
-              {emails.length === 0 ? (
-                <div className="p-8 text-center text-text-secondary text-xs flex flex-col items-center justify-center h-full space-y-2">
-                  <Inbox className="h-8 w-8 text-text-secondary/40" />
-                  <span>Virtual SMTP mailbox is empty.</span>
-                  <span className="text-[10px] text-text-secondary/60">Generate a recovery email by clicking "Forgot Password" above.</span>
-                </div>
-              ) : selectedEmail ? (
-                // Email view details
-                <div className="p-4 space-y-4">
-                  <button onClick={() => setSelectedEmail(null)} className="text-xs text-brand-green font-bold hover:underline mb-2 flex items-center space-x-1 cursor-pointer">
-                    <span>← Back to Inbox</span>
-                  </button>
-                  <div className="space-y-1.5 text-xs text-text-secondary border-b border-border-primary/40 pb-2.5">
-                    <p><strong>From:</strong> security@transitops.com</p>
-                    <p><strong>To:</strong> {selectedEmail.to}</p>
-                    <p><strong>Subject:</strong> {selectedEmail.subject}</p>
-                  </div>
-                  <div className="text-xs leading-relaxed text-text-primary whitespace-pre-wrap">
-                    {selectedEmail.body}
-                  </div>
-                  
-                  {/* Verified Reset Passcode Trigger */}
-                  <div className="pt-2">
-                    <button
-                      onClick={() => handleTriggerResetLink(selectedEmail.actionEmail)}
-                      className="w-full bg-brand-green hover:bg-brand-green/90 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center space-x-1 cursor-pointer"
-                    >
-                      <ArrowRight className="h-3.5 w-3.5" />
-                      <span>Verify & Reset Passcode</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                // Inbox list
-                emails.map(mail => (
-                  <div 
-                    key={mail.id} 
-                    onClick={() => setSelectedEmail(mail)}
-                    className="p-3 hover:bg-bg-secondary/40 cursor-pointer transition-colors space-y-1"
-                  >
-                    <div className="flex justify-between items-center text-[10px] text-text-secondary">
-                      <span className="font-bold text-text-primary">To: {mail.to}</span>
-                      <span>{mail.timestamp}</span>
-                    </div>
-                    <p className="text-xs font-bold text-text-primary truncate">{mail.subject}</p>
-                    <p className="text-[11px] text-text-secondary truncate">{mail.body}</p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </div>
 
     </div>
   );
