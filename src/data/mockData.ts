@@ -9,6 +9,9 @@ export interface Vehicle {
   fuelEfficiency: string; // e.g. "18 kWh/100km" or "8.5 L/100km"
   lastService: string;
   nextService: string;
+  vehicleImageUrl?: string;
+  registrationNumber?: string;
+  chassisNumber?: string;
   isDeleted?: boolean;
 }
 
@@ -27,6 +30,12 @@ export interface Driver {
   isDeleted?: boolean;
   isBlocked?: boolean;
   blockedReason?: string;
+  photoUrl?: string;
+  licensePhotoUrl?: string;
+  aadhaarCardUrl?: string;
+  panCardUrl?: string;
+  personalEmail?: string;
+  phoneNumber?: string;
 }
 
 export interface Trip {

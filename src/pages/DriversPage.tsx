@@ -8,6 +8,7 @@ import {
   Search, Filter, ShieldCheck, Mail, Phone, Calendar, 
   TrendingUp, Plus
 } from 'lucide-react';
+import emailjs from '@emailjs/browser';
 
 interface DriversPageProps {
   drivers: Driver[];
@@ -66,11 +67,31 @@ export const DriversPage: React.FC<DriversPageProps> = ({
       availability: newDriver.availability as Driver['availability'] || 'Available',
       tripsCompleted: 0,
       password: tempPassword,
-      needsPasswordChange: true
+      needsPasswordChange: true,
+      photoUrl: newDriver.photoUrl,
+      licensePhotoUrl: newDriver.licensePhotoUrl,
+      aadhaarCardUrl: newDriver.aadhaarCardUrl,
+      panCardUrl: newDriver.panCardUrl,
+      personalEmail: newDriver.personalEmail
     };
 
     onAddDriver(driverToAdd);
     setIsAddOpen(false);
+
+    if (newDriver.personalEmail) {
+      emailjs.send(
+        import.meta.env.VITE_EMAILJS_SERVICE_ID,
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+        {
+          to_email: newDriver.personalEmail,
+          driver_name: newDriver.name,
+          driver_id: newDriver.id,
+          driver_password: tempPassword,
+          portal_email: emailStr
+        },
+        import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+      ).catch(console.error);
+    }
     
     setCreatedCredentials({
       email: emailStr,
@@ -87,7 +108,12 @@ export const DriversPage: React.FC<DriversPageProps> = ({
       licenseExpiry: new Date(Date.now() + 365 * 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       contact: '',
       availability: 'Available',
-      tripsCompleted: 0
+      tripsCompleted: 0,
+      photoUrl: '',
+      licensePhotoUrl: '',
+      aadhaarCardUrl: '',
+      panCardUrl: '',
+      personalEmail: ''
     });
   };
 
@@ -432,8 +458,47 @@ export const DriversPage: React.FC<DriversPageProps> = ({
                   <Mail className="h-4 w-4 text-text-secondary" />
                   <span>Platform Email: <strong>{selectedDriver.name.toLowerCase().replace(' ', '.')}@transitops.com</strong></span>
                 </div>
+                {selectedDriver.personalEmail && (
+                  <div className="flex items-center space-x-2 text-text-primary">
+                    <Mail className="h-4 w-4 text-text-secondary" />
+                    <span>Personal Email: <strong>{selectedDriver.personalEmail}</strong></span>
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Documents */}
+            {(selectedDriver.photoUrl || selectedDriver.licensePhotoUrl || selectedDriver.aadhaarCardUrl || selectedDriver.panCardUrl) && (
+              <div className="space-y-2.5">
+                <span className="text-[10px] text-text-secondary font-bold uppercase tracking-wider block">Compliance Documents</span>
+                <div className="grid grid-cols-2 gap-4">
+                  {selectedDriver.photoUrl && (
+                    <div>
+                      <span className="text-[10px] text-text-secondary">Driver Photo</span>
+                      <img src={selectedDriver.photoUrl} alt="Driver" className="w-full h-24 object-cover rounded-lg mt-1 border border-border-primary bg-bg-secondary" />
+                    </div>
+                  )}
+                  {selectedDriver.licensePhotoUrl && (
+                    <div>
+                      <span className="text-[10px] text-text-secondary">License</span>
+                      <img src={selectedDriver.licensePhotoUrl} alt="License" className="w-full h-24 object-cover rounded-lg mt-1 border border-border-primary bg-bg-secondary" />
+                    </div>
+                  )}
+                  {selectedDriver.aadhaarCardUrl && (
+                    <div>
+                      <span className="text-[10px] text-text-secondary">Aadhaar Card</span>
+                      <img src={selectedDriver.aadhaarCardUrl} alt="Aadhaar" className="w-full h-24 object-cover rounded-lg mt-1 border border-border-primary bg-bg-secondary" />
+                    </div>
+                  )}
+                  {selectedDriver.panCardUrl && (
+                    <div>
+                      <span className="text-[10px] text-text-secondary">PAN Card</span>
+                      <img src={selectedDriver.panCardUrl} alt="PAN" className="w-full h-24 object-cover rounded-lg mt-1 border border-border-primary bg-bg-secondary" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex justify-end pt-3 border-t border-border-primary/40">
@@ -521,16 +586,69 @@ export const DriversPage: React.FC<DriversPageProps> = ({
             </div>
           </div>
           
-          <div className="flex flex-col space-y-1">
-            <label className="text-xs text-text-secondary font-bold uppercase">Contact Phone / Email *</label>
-            <input
-              type="text"
-              placeholder="e.g. +1 (555) 019-1234"
-              required
-              className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
-              value={newDriver.contact}
-              onChange={(e) => setNewDriver({ ...newDriver, contact: e.target.value })}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Phone Number *</label>
+              <input
+                type="text"
+                placeholder="e.g. +1 (555) 019-1234"
+                required
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={newDriver.contact}
+                onChange={(e) => setNewDriver({ ...newDriver, contact: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Personal Email *</label>
+              <input
+                type="email"
+                placeholder="e.g. john@example.com"
+                required
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={newDriver.personalEmail || ''}
+                onChange={(e) => setNewDriver({ ...newDriver, personalEmail: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Driver Photo URL</label>
+              <input
+                type="text"
+                placeholder="https://example.com/photo.png"
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={newDriver.photoUrl || ''}
+                onChange={(e) => setNewDriver({ ...newDriver, photoUrl: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">License Photo URL</label>
+              <input
+                type="text"
+                placeholder="https://example.com/license.png"
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={newDriver.licensePhotoUrl || ''}
+                onChange={(e) => setNewDriver({ ...newDriver, licensePhotoUrl: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Aadhaar Card URL</label>
+              <input
+                type="text"
+                placeholder="https://example.com/aadhaar.png"
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={newDriver.aadhaarCardUrl || ''}
+                onChange={(e) => setNewDriver({ ...newDriver, aadhaarCardUrl: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">PAN Card URL</label>
+              <input
+                type="text"
+                placeholder="https://example.com/pan.png"
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={newDriver.panCardUrl || ''}
+                onChange={(e) => setNewDriver({ ...newDriver, panCardUrl: e.target.value })}
+              />
+            </div>
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">

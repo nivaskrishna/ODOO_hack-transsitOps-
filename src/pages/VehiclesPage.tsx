@@ -356,7 +356,24 @@ export const VehiclesPage: React.FC<VehiclesPageProps> = ({
       >
         {selectedVehicle && (
           <div className="space-y-4">
+            {selectedVehicle.vehicleImageUrl && (
+              <div className="w-full h-40 bg-bg-secondary/50 rounded-xl overflow-hidden border border-border-primary flex items-center justify-center">
+                <img src={selectedVehicle.vehicleImageUrl} alt={selectedVehicle.name} className="w-full h-full object-cover" />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4 border-b border-border-primary/50 pb-4">
+              {selectedVehicle.registrationNumber && (
+                <div>
+                  <span className="text-[10px] text-text-secondary font-bold uppercase tracking-wide">Registration</span>
+                  <p className="text-sm font-bold text-text-primary mt-0.5">{selectedVehicle.registrationNumber}</p>
+                </div>
+              )}
+              {selectedVehicle.chassisNumber && (
+                <div>
+                  <span className="text-[10px] text-text-secondary font-bold uppercase tracking-wide">Chassis Number</span>
+                  <p className="text-sm font-bold text-text-primary mt-0.5 font-mono">{selectedVehicle.chassisNumber}</p>
+                </div>
+              )}
               <div>
                 <span className="text-[10px] text-text-secondary font-bold uppercase tracking-wide">Payload Capacity</span>
                 <p className="text-sm font-bold text-text-primary mt-0.5">{selectedVehicle.capacity}</p>
@@ -503,6 +520,36 @@ export const VehiclesPage: React.FC<VehiclesPageProps> = ({
                 className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
                 value={newVehicle.fuelEfficiency}
                 onChange={(e) => setNewVehicle({ ...newVehicle, fuelEfficiency: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Registration Number</label>
+              <input
+                type="text"
+                placeholder="e.g. CA-12345"
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={newVehicle.registrationNumber || ''}
+                onChange={(e) => setNewVehicle({ ...newVehicle, registrationNumber: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs text-text-secondary font-bold uppercase">Chassis Number</label>
+              <input
+                type="text"
+                placeholder="e.g. VIN123456789"
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={newVehicle.chassisNumber || ''}
+                onChange={(e) => setNewVehicle({ ...newVehicle, chassisNumber: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col space-y-1 col-span-2">
+              <label className="text-xs text-text-secondary font-bold uppercase">Vehicle Image URL</label>
+              <input
+                type="text"
+                placeholder="https://example.com/image.png"
+                className="rounded-xl border border-border-primary bg-bg-primary/50 text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-brand-green"
+                value={newVehicle.vehicleImageUrl || ''}
+                onChange={(e) => setNewVehicle({ ...newVehicle, vehicleImageUrl: e.target.value })}
               />
             </div>
           </div>
