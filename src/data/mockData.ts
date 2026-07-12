@@ -122,86 +122,86 @@ export const mockTrips: Trip[] = [
     id: 'TR-1001',
     vehicleId: 'Van-01',
     driverId: 'D-01',
-    startLocation: 'Seattle Hub A',
-    endLocation: 'Portland Distribution',
+    startLocation: 'Mumbai Hub A',
+    endLocation: 'Delhi Depot',
     status: 'In Progress',
     progress: 65,
-    distance: 280,
+    distance: 1420,
     departureTime: '2026-07-12T07:30:00Z',
     arrivalTime: '2026-07-12T11:45:00Z',
-    eta: '45 mins remaining',
+    eta: '4.5 hours remaining',
     route: {
-      name: 'I-5 Southbound',
-      coordinates: [[47.6062, -122.3321], [47.2529, -122.4443], [46.9740, -122.9007], [45.5152, -122.6784]]
+      name: 'NH-48 Golden Quadrilateral',
+      coordinates: [[19.0760, 72.8777], [22.3072, 73.1812], [26.9124, 75.7873], [28.6139, 77.2090]]
     },
     timeline: [
-      { time: '07:30 AM', status: 'Departed Seattle', location: 'Seattle Hub A', description: 'Vehicle loaded and safety checks passed.' },
-      { time: '08:45 AM', status: 'Passed Tacoma', location: 'I-5 Tacoma', description: 'Driving smoothly in low-traffic conditions.' },
-      { time: '09:50 AM', status: 'Charging Stop', location: 'Olympia Fast Charger', description: 'Fast charged battery from 25% to 80% (20 mins).' },
-      { time: '10:15 AM', status: 'Resumed Trip', location: 'Olympia Hub', description: 'Departed charger, driving towards Portland.' }
+      { time: '07:30 AM', status: 'Departed Mumbai', location: 'Mumbai Hub A', description: 'Vehicle loaded and security checks passed.' },
+      { time: '08:45 AM', status: 'Passed Thane', location: 'NH-48 Odometer', description: 'Driving smoothly in low-traffic conditions.' },
+      { time: '09:50 AM', status: 'Charging Stop', location: 'Surat Fast Charger', description: 'Fast charged battery from 25% to 80% (20 mins).' },
+      { time: '10:15 AM', status: 'Resumed Trip', location: 'Surat Depot', description: 'Departed charger, driving towards Delhi.' }
     ]
   },
   {
     id: 'TR-1002',
     vehicleId: 'Truck-02',
     driverId: 'D-04',
-    startLocation: 'San Francisco Terminal',
-    endLocation: 'Los Angeles Logistics',
+    startLocation: 'Bengaluru Distribution',
+    endLocation: 'Chennai Terminal',
     status: 'In Progress',
     progress: 30,
-    distance: 615,
+    distance: 350,
     departureTime: '2026-07-12T05:00:00Z',
     arrivalTime: '2026-07-12T13:30:00Z',
-    eta: '5 hours remaining',
+    eta: '2.5 hours remaining',
     route: {
-      name: 'I-5 Southbound / Grapevine',
-      coordinates: [[37.7749, -122.4194], [36.7378, -119.7871], [35.3733, -119.0187], [34.0522, -118.2437]]
+      name: 'NH-75 Expressway',
+      coordinates: [[12.9716, 77.5946], [12.8617, 78.4729], [12.9796, 79.1344], [13.0827, 80.2707]]
     },
     timeline: [
-      { time: '05:00 AM', status: 'Departed Terminal', location: 'San Francisco', description: 'Interstate transport initialized. Fully loaded payload.' },
-      { time: '08:12 AM', status: 'Check-point Passed', location: 'Fresno Bypass', description: 'Odometer tracking normal. Temperature range stable.' }
+      { time: '05:00 AM', status: 'Departed Terminal', location: 'Bengaluru', description: 'Interstate transport initialized. Fully loaded payload.' },
+      { time: '08:12 AM', status: 'Check-point Passed', location: 'Vellore Bypass', description: 'Odometer tracking normal. Temperature range stable.' }
     ]
   },
   {
     id: 'TR-1003',
     vehicleId: 'Van-05',
     driverId: 'D-02',
-    startLocation: 'Vancouver Depot',
-    endLocation: 'Richmond Local Retailers',
+    startLocation: 'Hyderabad Hub',
+    endLocation: 'Bengaluru Distribution',
     status: 'Completed',
     progress: 100,
-    distance: 45,
+    distance: 575,
     departureTime: '2026-07-12T06:00:00Z',
     arrivalTime: '2026-07-12T08:15:00Z',
     eta: 'Delivered',
     route: {
-      name: 'Highway 99 Route',
-      coordinates: [[49.2827, -123.1207], [49.1700, -123.1368]]
+      name: 'NH-44 Corridor',
+      coordinates: [[17.3850, 78.4867], [15.8281, 78.0373], [14.6819, 77.6006], [12.9716, 77.5946]]
     },
     timeline: [
-      { time: '06:00 AM', status: 'Departed Depot', location: 'Vancouver Depot', description: 'Local courier run started.' },
-      { time: '07:05 AM', status: 'Deliveries Made', location: ' Richmond Center', description: 'Dropped off packages at first 3 locations.' },
-      { time: '08:15 AM', status: 'Completed Run', location: 'Richmond Terminal', description: 'All items successfully signed off.' }
+      { time: '06:00 AM', status: 'Departed Depot', location: 'Hyderabad Hub', description: 'Local courier run started.' },
+      { time: '07:05 AM', status: 'Deliveries Made', location: 'Kurnool Center', description: 'Dropped off packages at first 3 locations.' },
+      { time: '08:15 AM', status: 'Completed Run', location: 'Bengaluru Terminal', description: 'All items successfully signed off.' }
     ]
   },
   {
     id: 'TR-1004',
     vehicleId: 'Truck-04',
     driverId: 'D-03',
-    startLocation: 'Boston Warehouse C',
-    endLocation: 'New York City Docks',
+    startLocation: 'Delhi Depot',
+    endLocation: 'Kolkata Cargo',
     status: 'Scheduled',
     progress: 0,
-    distance: 350,
+    distance: 1490,
     departureTime: '2026-07-12T13:00:00Z',
     arrivalTime: '2026-07-12T18:30:00Z',
     eta: 'Scheduled 1:00 PM',
     route: {
-      name: 'I-95 Southbound',
-      coordinates: [[42.3601, -71.0589], [41.3083, -72.9279], [40.7128, -74.0060]]
+      name: 'AH1 East-West Corridor',
+      coordinates: [[28.6139, 77.2090], [25.3176, 82.9739], [22.5726, 88.3639]]
     },
     timeline: [
-      { time: 'Pending', status: 'Pre-Trip Inspection', location: 'Boston Depot', description: 'Awaiting driver check-in.' }
+      { time: 'Pending', status: 'Pre-Trip Inspection', location: 'Delhi Depot', description: 'Awaiting driver check-in.' }
     ]
   }
 ];

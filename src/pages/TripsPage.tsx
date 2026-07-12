@@ -1,11 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Trip, Vehicle, Driver } from '../data/mockData';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { 
-  Navigation, Clock, Map 
+  Clock, Map 
 } from 'lucide-react';
+
+
+const INDIAN_CITY_COORDINATES: Record<string, { lat: number; lon: number }> = {
+  'Mumbai Hub A': { lat: 19.0760, lon: 72.8777 },
+  'Delhi Depot': { lat: 28.6139, lon: 77.2090 },
+  'Bengaluru Distribution': { lat: 12.9716, lon: 77.5946 },
+  'Chennai Terminal': { lat: 13.0827, lon: 80.2707 },
+  'Kolkata Cargo': { lat: 22.5726, lon: 88.3639 },
+  'Hyderabad Hub': { lat: 17.3850, lon: 78.4867 },
+  'Pune Depot': { lat: 18.5204, lon: 73.8567 },
+  'Ahmedabad Depot': { lat: 23.0225, lon: 72.5714 }
+};
 
 interface TripsPageProps {
   trips: Trip[];
@@ -26,8 +38,100 @@ export const TripsPage: React.FC<TripsPageProps> = ({
 }) => {
   const [filterStatus, setFilterStatus] = useState<'All' | 'In Progress' | 'Pending Completion' | 'Completed' | 'Scheduled'>('All');
 
+  const [leafletLoaded, setLeafletLoaded] = useState(false);
+
+  useEffect(() => {
+    if ((window as any).L) {
+      setLeafletLoaded(true);
+      return;
+    }
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.async = true;
+    script.onload = () => {
+      setLeafletLoaded(true);
+    };
+    document.body.appendChild(script);
+  }, []);
+
   // Currently viewed trip details (defaults to first or selected)
   const currentTrip = trips.find(t => t.id === selectedTripId) || trips[0];
+
+  useEffect(() => {
+    const L = (window as any).L;
+    if (!L || !leafletLoaded || !currentTrip) return;
+
+    const startCoord = INDIAN_CITY_COORDINATES[currentTrip.startLocation];
+    const endCoord = INDIAN_CITY_COORDINATES[currentTrip.endLocation];
+
+    const container = L.DomUtil.get('leaflet-map');
+    if (container !== null) {
+      container._leaflet_id = null;
+    }
+
+    const map = L.map('leaflet-map', {
+      zoomControl: true,
+      scrollWheelZoom: false
+    }).setView([20.5937, 78.9629], 5);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    if (startCoord && endCoord) {
+      const p1: [number, number] = [startCoord.lat, startCoord.lon];
+      const p2: [number, number] = [endCoord.lat, endCoord.lon];
+
+      const iconStart = L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div style="background-color: #6B7280; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7]
+      });
+
+      const iconEnd = L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div style="background-color: #00B67A; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 8px rgba(0,182,122,0.6);"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      });
+
+      L.marker(p1, { icon: iconStart }).addTo(map).bindPopup(`<b>Origin:</b> ${currentTrip.startLocation}`).openPopup();
+      L.marker(p2, { icon: iconEnd }).addTo(map).bindPopup(`<b>Destination:</b> ${currentTrip.endLocation}`);
+
+      const polyline = L.polyline([p1, p2], {
+        color: '#00B67A',
+        weight: 4,
+        dashArray: currentTrip.status === 'In Progress' ? '8, 8' : undefined
+      }).addTo(map);
+
+      map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+
+      if (currentTrip.status === 'In Progress') {
+        const ratio = currentTrip.progress / 100;
+        const currentLat = p1[0] + (p2[0] - p1[0]) * ratio;
+        const currentLon = p1[1] + (p2[1] - p1[1]) * ratio;
+
+        const iconVehicle = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div style="background-color: #3B82F6; color: white; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 0 12px rgba(59,130,246,0.8);" class="animate-bounce">
+            <svg style="width: 10px; height: 10px;" fill="currentColor" viewBox="0 0 24 24"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm12 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"></path></svg>
+          </div>`,
+          iconSize: [22, 22],
+          iconAnchor: [11, 11]
+        });
+
+        L.marker([currentLat, currentLon], { icon: iconVehicle }).addTo(map)
+          .bindPopup(`<b>Current:</b> ${currentTrip.vehicleId} (${currentTrip.progress}%)`);
+      }
+    }
+  }, [leafletLoaded, currentTrip]);
 
   const filteredTrips = trips.filter(t => filterStatus === 'All' || t.status === filterStatus);
 
@@ -141,69 +245,8 @@ export const TripsPage: React.FC<TripsPageProps> = ({
                 </CardHeader>
                 <CardContent className="p-6">
                   {/* Route Visual Drawing */}
-                  <div className="relative h-64 bg-bg-secondary border border-border-primary rounded-2xl overflow-hidden shadow-inner flex items-center justify-center p-4">
-                    {/* Grids */}
-                    <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:16px_28px]" />
-                    
-                    {/* Visual route curve */}
-                    <svg className="absolute inset-0 w-full h-full text-border-primary stroke-current" fill="none">
-                      <path d="M 60,80 Q 200,160 250,90 T 450,150" strokeWidth="5" strokeLinecap="round" />
-                      {currentTrip.status !== 'Scheduled' && (
-                        <path 
-                          d="M 60,80 Q 200,160 250,90 T 450,150" 
-                          stroke="#00B67A" 
-                          strokeWidth="3.5" 
-                          strokeLinecap="round" 
-                          strokeDasharray="8 5" 
-                          className="animate-[pulse_1.5s_infinite]" 
-                        />
-                      )}
-                    </svg>
-
-                    {/* Progress details indicator on map */}
-                    {currentTrip.status === 'In Progress' && (
-                      <div 
-                        className="absolute flex flex-col items-center"
-                        style={{
-                          left: `${currentTrip.progress}%`,
-                          top: `${60 - Math.sin((currentTrip.progress / 100) * Math.PI) * 15}%`
-                        }}
-                      >
-                        <div className="bg-brand-green text-white p-1.5 rounded-full shadow-[0_0_15px_rgba(0,182,122,0.6)] animate-bounce relative">
-                          <Navigation className="h-4 w-4 rotate-90" />
-                        </div>
-                        <span className="bg-bg-card border border-border-primary text-[8px] font-bold px-1.5 py-0.5 rounded shadow mt-1 whitespace-nowrap">
-                          {currentTrip.vehicleId} ({currentTrip.progress}%)
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Departure Pins */}
-                    <div className="absolute left-10 top-[28%] flex flex-col items-center">
-                      <div className="h-3 w-3 rounded-full bg-text-secondary border-2 border-white shadow" />
-                      <span className="bg-bg-card text-[9px] font-bold px-1.5 py-0.5 rounded border border-border-primary shadow mt-1 whitespace-nowrap">
-                        {currentTrip.startLocation.split(' ')[0]}
-                      </span>
-                    </div>
-
-                    {/* Arrival Pins */}
-                    <div className="absolute right-12 top-[60%] flex flex-col items-center">
-                      <div className="h-3.5 w-3.5 rounded-full bg-brand-green border-2 border-white shadow" />
-                      <span className="bg-bg-card text-[9px] font-bold px-1.5 py-0.5 rounded border border-brand-green/20 shadow mt-1 whitespace-nowrap">
-                        {currentTrip.endLocation.split(' ')[0]}
-                      </span>
-                    </div>
-
-                    {/* Telemetry statistics overlay */}
-                    {currentTrip.status === 'In Progress' && (
-                      <div className="absolute left-4 bottom-4 p-3 bg-bg-card/90 backdrop-blur-sm rounded-xl border border-border-primary/80 shadow-md text-xs space-y-1">
-                        <p className="text-[10px] text-text-secondary font-bold uppercase tracking-wider">Remaining</p>
-                        <p className="font-bold text-text-primary flex items-center">
-                          <Clock className="h-3 w-3 mr-1 text-brand-green" />
-                          {currentTrip.eta}
-                        </p>
-                      </div>
-                    )}
+                  <div className="relative h-64 bg-bg-secondary border border-border-primary rounded-2xl overflow-hidden shadow-inner p-0 z-0">
+                    <div id="leaflet-map" className="w-full h-full" />
                   </div>
 
                   {/* Route milestones overview */}

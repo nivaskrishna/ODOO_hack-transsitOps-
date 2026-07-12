@@ -14,14 +14,14 @@ import {
   ArrowRight, ShieldCheck, MapPin, Navigation, Clock 
 } from 'lucide-react';
 const CITY_COORDINATES: Record<string, { lat: number; lon: number }> = {
-  'Seattle Depot A': { lat: 47.6062, lon: -122.3321 },
-  'Portland Distribution': { lat: 45.5152, lon: -122.6784 },
-  'San Francisco Depot': { lat: 37.7749, lon: -122.4194 },
-  'Los Angeles Logistics': { lat: 34.0522, lon: -118.2437 },
-  'Las Vegas Terminal': { lat: 36.1716, lon: -115.1398 },
-  'Phoenix Cargo Center': { lat: 33.4484, lon: -112.0740 },
-  'Salt Lake City Hub': { lat: 40.7608, lon: -111.8910 },
-  'Vancouver Port Depot': { lat: 49.2827, lon: -123.1207 }
+  'Mumbai Hub A': { lat: 19.0760, lon: 72.8777 },
+  'Delhi Depot': { lat: 28.6139, lon: 77.2090 },
+  'Bengaluru Distribution': { lat: 12.9716, lon: 77.5946 },
+  'Chennai Terminal': { lat: 13.0827, lon: 80.2707 },
+  'Kolkata Cargo': { lat: 22.5726, lon: 88.3639 },
+  'Hyderabad Hub': { lat: 17.3850, lon: 78.4867 },
+  'Pune Depot': { lat: 18.5204, lon: 73.8567 },
+  'Ahmedabad Depot': { lat: 23.0225, lon: 72.5714 }
 };
 
 const calculateHaversineDistance = (city1: string, city2: string): number => {
@@ -79,10 +79,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [dispatchData, setDispatchData] = useState({
     vehicleId: '',
     driverId: '',
-    startLocation: 'Seattle Depot A',
-    endLocation: 'Portland Distribution',
-    routeName: 'Seattle to Portland Direct Route',
-    distance: 280
+    startLocation: 'Mumbai Hub A',
+    endLocation: 'Delhi Depot',
+    routeName: 'Mumbai to Delhi Direct Route',
+    distance: 1420
   });
 
   // Calculate Geolocation distance reactively
